@@ -12,3 +12,6 @@ resources and called functions without the need to manually go into every
 function to check on used resources.
 
 You can find a complete example in the code.
+
+### TODO
+Filter out resources which are listed as read access but also exist as write access.
