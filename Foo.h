@@ -15,7 +15,7 @@ public:
 
 	void MethodB(CBar& bar)
 	{
-		bar.Method();                                  // refer to Meta::Bar::Method
+		bar.Method();                                  // inherit everything from Meta::Bar::Method
 		std::cout << "Bar string: " << bar.someString; // read access Bar::someString
 	}
 

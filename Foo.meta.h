@@ -9,7 +9,8 @@ namespace Meta::Foo
 	{
 	};
 
-	struct CMethodB : CMethodResources<Bar::CMethod, Bar::CSomeString<EResourceAccessMode::READ>>
+	struct CMethodB : CMethodResources<Bar::CMethod,
+	                                   Bar::CSomeString<EResourceAccessMode::READ>>
 	{
 	};
 

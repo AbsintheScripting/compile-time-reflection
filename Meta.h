@@ -74,10 +74,12 @@ namespace Meta
 		static constexpr bool CONTAINS = (std::is_same_v<T, Ts> || ...);
 
 		template <typename T>
-		using TAppendIfUnique = std::conditional_t<CONTAINS<T>, CFilteredUniqueTypeList<Ts...>, CFilteredUniqueTypeList<Ts..., T>>;
+		using TAppendIfUnique = std::conditional_t<CONTAINS<T>,
+		                                           CFilteredUniqueTypeList<Ts...>,
+		                                           CFilteredUniqueTypeList<Ts..., T>>;
 	};
 
-	template <typename... Ts>
+	template <typename...>
 	struct CUniqueTypeList;
 
 	template <>
@@ -111,17 +113,15 @@ namespace Meta
 	concept exist_write_access = member_resource_access<T> && member_resource_access<U>
 		&& std::is_same_v<typename T::TType, typename U::TType>
 		&& std::is_same_v<typename T::TMember, typename U::TMember>
-		&& (
-			T::ACCESS_MODE == EResourceAccessMode::READ && U::ACCESS_MODE == EResourceAccessMode::WRITE
-			||
-			T::ACCESS_MODE == EResourceAccessMode::WRITE && U::ACCESS_MODE == EResourceAccessMode::READ // TODO: remove
-		);
+		&& T::ACCESS_MODE == EResourceAccessMode::READ && U::ACCESS_MODE == EResourceAccessMode::WRITE;
 
-	template <typename... Ts>
-	struct CFilteredResourceTypeList{};
+	template <typename...>
+	struct CFilteredResourceTypeList
+	{
+	};
 
 	template <member_resource_access... Filtered>
-	struct CFilteredResourceTypeList<Filtered... >
+	struct CFilteredResourceTypeList<Filtered...>
 	{
 		using TTypes = std::tuple<Filtered...>;
 
@@ -141,7 +141,7 @@ namespace Meta
 		}
 	};
 
-	template <typename... Ts>
+	template <typename...>
 	struct CResourceTypeList;
 
 	template <member_resource_access... Unfiltered>
@@ -156,7 +156,8 @@ namespace Meta
 	{
 		// reduce CResourceTypeList<...> by T and check if T should be appended to CFilteredResourceTypeList
 		// chain std::tuple<Unfiltered...> through all variations
-		using TFilter = typename CResourceTypeList<std::tuple<Unfiltered...>, Ts...>::TFilter::template TAppendFiltered<T, Unfiltered...>;
+		using TFilter = typename CResourceTypeList<std::tuple<Unfiltered...>, Ts...>::TFilter
+		::template TAppendFiltered<T, Unfiltered...>;
 	};
 
 	template <member_resource_access... Ts>

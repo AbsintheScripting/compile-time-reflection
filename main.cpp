@@ -24,7 +24,8 @@ int main()
 
 	// check TUniqueTypes
 	static_assert(std::is_same_v<Meta::TUniqueTypes<TSomeStringRead, TSomeStringRead, TSomeStringWrite>,
-	                             Meta::CFilteredUniqueTypeList<TSomeStringWrite, TSomeStringRead>>); // order is inverse, filters out 1x TSomeStringRead
+	                             // order is inverse, filters out 1x TSomeStringRead
+	                             Meta::CFilteredUniqueTypeList<TSomeStringWrite, TSomeStringRead>>);
 	// check concept exist_write_access
 	static_assert(Meta::exist_write_access<TSomeStringRead, TSomeStringWrite>);
 	// check TResourceTypes
