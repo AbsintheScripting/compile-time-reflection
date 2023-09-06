@@ -97,3 +97,7 @@ int main()
 	return 0;
 }
 ```
+
+## Code Style
+If you're wondering what code style this is,
+it is [my own C++ code style](https://gist.github.com/AbsintheScripting/4f2be73c91fc49fc6bc2cefbb2a52895).
