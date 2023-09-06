@@ -12,17 +12,27 @@ including accessed resources of all sub-routines.
 So when you define a task for a multi-threaded system, you only list accessed
 resources and called functions without the need to manually go into every
 function to check on used resources.
+The output is filtered in such a way,
+that you only have a list of unique resource types.
+Also if you list a resource twice, one as read the other as write, 
+only the resource with write access will be listed and the one with read access will be filtered out.
 
 ## Example
 
 ```cpp
+
 class CBar
 {
 public:
 	void Method()
 	{
-		someNumber = 1;      // write access Bar::someNumber
-		someString = "Test"; // write access Bar::someString
+		someNumber = 1;      // write access someNumber
+		someString = "Test"; // write access someString
+	}
+	void MethodCallingMethod()
+	{
+		Method();                                  // inherit resources from Method
+		std::cout << "Bar string: " << someString; // read access someString
 	}
 	int someNumber;
 	std::string someString;
@@ -45,28 +55,45 @@ namespace Meta::Bar
 	                                  CSomeString<EResourceAccessMode::WRITE>>
 	{
 	};
+	// declare used resources for CBar::MethodCallingMethod
+	struct CMethodCallingMethod : CMethodResources<CMethod,
+	                                               CSomeString<EResourceAccessMode::READ>>
+	{
+	};
 }
 
 int main()
 {
+	using TSomeNumberWrite = Meta::Bar::CSomeNumber<Meta::EResourceAccessMode::WRITE>;
+	using TSomeStringRead = Meta::Bar::CSomeString<Meta::EResourceAccessMode::READ>;
+	using TSomeStringWrite = Meta::Bar::CSomeString<Meta::EResourceAccessMode::WRITE>;
 	// Init reflection manager
 	constexpr static Meta::CResourceReflectionManager<
-		Meta::Bar::CMethod
-		// ...
+		Meta::Bar::CMethod,
+		Meta::Bar::CMethodCallingMethod // , ...
 	> REFLECTION_MANAGER;
 	// Retrieve resources
-	// type: std::tuple<CSomeNumber<EResourceAccessMode::WRITE>,
-	//                  CSomeString<EResourceAccessMode::WRITE>>
 	constexpr auto barMethod = REFLECTION_MANAGER.GetResources<Meta::Bar::CMethod>();
+	// type: const std::tuple<TSomeNumberWrite, TSomeStringWrite>
+	static_assert(std::is_same_v<std::decay_t<decltype(barMethod)>,
+	                             std::tuple<TSomeNumberWrite,
+	                                        TSomeStringWrite>>);
 	static_assert( // CSomeNumber<EResourceAccessMode::WRITE>
 		std::get<0>(barMethod).ACCESS_MODE == Meta::EResourceAccessMode::WRITE
 	);
 	static_assert( // CSomeString<EResourceAccessMode::WRITE>
 		std::get<1>(barMethod).ACCESS_MODE == Meta::EResourceAccessMode::WRITE
 	);
+	// Retrieve resources recursively
+	// (e.g. CMethodResources<CMethod> as CMethod is of type CMethodResources as well)
+	// and filter out resources which are listed as read access
+	// but also exist as write access in the resources list
+	constexpr auto barMethodCallingMethod = REFLECTION_MANAGER.GetResources<Meta::Bar::CMethodCallingMethod>();
+	// type: const std::tuple<TSomeNumberWrite, TSomeStringWrite>
+	// we filtered out TSomeStringRead because of TSomeStringWrite (write > read)
+	static_assert(std::is_same_v<std::decay_t<decltype(barMethodCallingMethod)>,
+	                             std::tuple<TSomeNumberWrite,
+	                                        TSomeStringWrite>>);
 	return 0;
 }
 ```
-
-### TODO
-Filter out resources which are listed as read access but also exist as write access in the list.
