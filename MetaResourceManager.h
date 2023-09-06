@@ -17,10 +17,7 @@ namespace Meta
 		[[nodiscard]]
 		constexpr auto GetResources() const
 		{
-			return MethodAnnotation::GetResources();
+			return MethodAnnotation::GetFilteredResources();
 		}
-
-	private:
-		static constexpr TResources RESOURCES = {};
 	};
 }
