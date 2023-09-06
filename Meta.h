@@ -5,7 +5,7 @@
 
 namespace Meta
 {
-	/**
+	/*
 	 * ####################################
 	 * resource concepts
 	 * ####################################
@@ -18,7 +18,7 @@ namespace Meta
 	template <typename T>
 	concept method_or_member_resources = method_resources<T> || member_resource_access<T>;
 
-	/**
+	/*
 	 * ####################################
 	 * resource definition
 	 * ####################################
@@ -55,15 +55,16 @@ namespace Meta
 		static constexpr EResourceAccessMode ACCESS_MODE = AccessMode;
 	};
 
-	/**
+	/*
 	 * ####################################
 	 * filter for unique types
 	 * ####################################
 	 */
 
 	/**
-	 * \brief Gets a list of types which can then be filtered for unique types.
-	 * \tparam Ts List of types
+	 * \brief Holds the list of unique types.
+	 * Can also append the list if the incoming type is unique.
+	 * \tparam Ts List of unique types
 	 */
 	template <typename... Ts>
 	struct CFilteredUniqueTypeList
@@ -103,7 +104,7 @@ namespace Meta
 	template <typename... Ts>
 	using TUniqueTypes = typename CUniqueTypeList<Ts...>::TFilter;
 
-	/**
+	/*
 	 * ####################################
 	 * filter for access
 	 * ####################################
@@ -115,13 +116,13 @@ namespace Meta
 		&& std::is_same_v<typename T::TMember, typename U::TMember>
 		&& T::ACCESS_MODE == EResourceAccessMode::READ && U::ACCESS_MODE == EResourceAccessMode::WRITE;
 
-	template <typename...>
-	struct CFilteredResourceTypeList
-	{
-	};
-
+	/**
+	 * \brief Holds the list of filtered types.
+	 * Can also append the list if the incoming type meets the requirements.
+	 * \tparam Filtered List of filtered types
+	 */
 	template <member_resource_access... Filtered>
-	struct CFilteredResourceTypeList<Filtered...>
+	struct CFilteredResourceTypeList
 	{
 		using TTypes = std::tuple<Filtered...>;
 
@@ -161,9 +162,9 @@ namespace Meta
 	};
 
 	template <member_resource_access... Ts>
-	using TResourceTypes = typename CResourceTypeList<std::tuple<Ts...>, Ts...>::template TFilter;
+	using TResourceTypes = typename CResourceTypeList<std::tuple<Ts...>, Ts...>::TFilter;
 
-	/**
+	/*
 	 * ####################################
 	 * resource definition for a method
 	 * ####################################
