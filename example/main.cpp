@@ -10,9 +10,9 @@
 
 #include <tuple>
 
-#include "Foo.meta.h"
-#include "Bar.meta.h"
-#include "MetaResourceManager.h"
+#include "CFoo.meta.h"
+#include "CBar.meta.h"
+#include "MetaResourceManager.hpp"
 
 int main()
 {

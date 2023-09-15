@@ -2,7 +2,7 @@
 #include <iostream>
 #include <string>
 
-#include "Bar.h"
+#include "CBar.h"
 
 class CFoo
 {
