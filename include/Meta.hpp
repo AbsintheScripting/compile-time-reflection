@@ -110,6 +110,11 @@ namespace Meta
 	 * ####################################
 	 */
 
+	 /**
+	  * \brief Checks if we have already write access on the same resource.
+	  * \tparam T The resource with read access
+	  * \tparam U To check if it accesses the same resource in write mode
+	  */
 	template <typename T, typename U>
 	concept exist_write_access = member_resource_access<T> && member_resource_access<U>
 		&& std::is_same_v<typename T::TType, typename U::TType>
@@ -161,6 +166,11 @@ namespace Meta
 		::template TAppendFiltered<T, Unfiltered...>;
 	};
 
+	/**
+	 * \brief Filters out types which access the same resource
+	 * by removing the read access and keeping the write access.
+	 * \tparam Ts List of resources to check
+	 */
 	template <member_resource_access... Ts>
 	using TResourceTypes = typename CResourceTypeList<std::tuple<Ts...>, Ts...>::TFilter;
 
