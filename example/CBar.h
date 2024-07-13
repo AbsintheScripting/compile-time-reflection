@@ -4,6 +4,11 @@
 class CBar
 {
 public:
+	CBar()
+		: someNumber(0)
+	{
+	}
+
 	void Method()
 	{
 		someNumber = 1;      // write access Bar::someNumber

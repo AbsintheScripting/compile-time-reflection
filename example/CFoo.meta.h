@@ -1,10 +1,19 @@
 #pragma once
-#include "Meta.hpp"
 #include "CBar.meta.h"
+#include "CFoo.h"
+#include "Meta.hpp"
 
 namespace Meta::Foo
 {
-	struct CMethodA : CMethodResources<Bar::CSomeNumber<EResourceAccessMode::WRITE>,
+	using TPrivateNumber = CPrivateField<int, CStringLiteral("number")>;
+
+	template <EResourceAccessMode AccessMode>
+	struct CNumber : CPrivateMemberResourceAccess<CFoo, TPrivateNumber, AccessMode>
+	{
+	};
+
+	struct CMethodA : CMethodResources<CNumber<EResourceAccessMode::WRITE>,
+	                                   Bar::CSomeNumber<EResourceAccessMode::WRITE>,
 	                                   Bar::CSomeString<EResourceAccessMode::READ>>
 	{
 	};

@@ -10,18 +10,23 @@
 
 #include <tuple>
 
-#include "CFoo.meta.h"
 #include "CBar.meta.h"
+#include "CFoo.meta.h"
 #include "MetaResourceManager.hpp"
 
 int main()
 {
 	using TSomeNumberWrite = Meta::Bar::CSomeNumber<Meta::EResourceAccessMode::WRITE>;
+	using TAnotherNumberWrite = Meta::Foo::CNumber<Meta::EResourceAccessMode::WRITE>;
 	using TSomeStringRead = Meta::Bar::CSomeString<Meta::EResourceAccessMode::READ>;
 	using TSomeStringWrite = Meta::Bar::CSomeString<Meta::EResourceAccessMode::WRITE>;
 	using TAnotherStringWrite = Meta::Bar::CAnotherString<Meta::EResourceAccessMode::WRITE>;
 	using TSomeMethodResources = Meta::CMethodResources<TSomeNumberWrite, TSomeStringWrite>;
 
+	// check private fields
+	static_assert(std::is_same_v<TAnotherNumberWrite::TType, CFoo>);
+	static_assert(std::is_same_v<TAnotherNumberWrite::TMember::TType, int>);
+	static_assert(TAnotherNumberWrite::TMember::NAME == Meta::CStringLiteral("number"));
 	// check TUniqueTypes
 	static_assert(std::is_same_v<Meta::TUniqueTypes<TSomeStringRead, TSomeStringRead, TSomeStringWrite>,
 	                             // order is inverse, filters out 1x TSomeStringRead

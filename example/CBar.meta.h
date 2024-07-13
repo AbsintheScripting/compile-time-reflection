@@ -1,6 +1,6 @@
 #pragma once
-#include "Meta.hpp"
 #include "CBar.h"
+#include "Meta.hpp"
 
 namespace Meta::Bar
 {

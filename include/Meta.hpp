@@ -1,5 +1,7 @@
 #pragma once
+#include <algorithm>
 #include <concepts>
+#include <string_view>
 #include <tuple>
 #include <type_traits>
 
@@ -33,6 +35,8 @@ namespace Meta
 		WRITE
 	};
 
+	// Public and protected resources
+
 	/**
 	 * \brief Links to the member of some class.
 	 */
@@ -44,7 +48,7 @@ namespace Meta
 	/**
 	 * \brief Links the access mode with a given class member.
 	 * \tparam T Class
-	 * \tparam MemberPtr Member of the class
+	 * \tparam MemberPtr public or protected member of the class
 	 * \tparam AccessMode Mode of access
 	 */
 	template <typename T, auto MemberPtr, EResourceAccessMode AccessMode>
@@ -52,6 +56,65 @@ namespace Meta
 	{
 		using TType = T;
 		using TMember = CValueHolder<MemberPtr>;
+		static constexpr EResourceAccessMode ACCESS_MODE = AccessMode;
+	};
+
+	// Private resources
+
+	/**
+	 * \brief Helper struct to store a string literal in compile time.
+	 * \tparam N Size of the string literal. Usually the compiler can figure that out.
+	 */
+	template <size_t N>
+	struct CStringLiteral
+	{
+		CStringLiteral() = delete;
+
+		explicit constexpr CStringLiteral(const char (&str)[N])
+		{
+			std::copy_n(str, N, value);
+		}
+
+		constexpr bool operator==(const CStringLiteral& string_literal) const
+		{
+			std::string_view left = value;
+			std::string_view right = string_literal.value;
+			return std::ranges::equal(left, right);
+		}
+
+		char value[N];
+	};
+
+	/**
+	 * \brief Describes a private member of some class, because you cannot reference private members directly.
+	 * \tparam Type Holds the type of the private data member
+	 * \tparam Name Pass the name of the data member as string into the CStringLiteral helper struct
+	 */
+	template <typename Type, CStringLiteral Name>
+	struct CPrivateField
+	{
+		using TType = Type;
+		static constexpr CStringLiteral NAME = Name;
+	};
+
+	/**
+	 * \brief Checks if we have the structure of a CPrivateField.
+	 * \tparam T The type to check
+	 */
+	template <typename T>
+	concept private_field = requires { typename T::TType; T::NAME; };
+
+	/**
+	 * \brief Links the access mode with a given class member.
+	 * \tparam T Class
+	 * \tparam MemberDescription Description of the private member of the class
+	 * \tparam AccessMode Mode of access
+	 */
+	template <typename T, private_field MemberDescription, EResourceAccessMode AccessMode>
+	struct CPrivateMemberResourceAccess
+	{
+		using TType = T;
+		using TMember = MemberDescription;
 		static constexpr EResourceAccessMode ACCESS_MODE = AccessMode;
 	};
 
@@ -110,11 +173,11 @@ namespace Meta
 	 * ####################################
 	 */
 
-	 /**
-	  * \brief Checks if we have already write access on the same resource.
-	  * \tparam T The resource with read access
-	  * \tparam U To check if it accesses the same resource in write mode
-	  */
+	/**
+	 * \brief Checks if we have already write access on the same resource.
+	 * \tparam T The resource with read access
+	 * \tparam U To check if it accesses the same resource in write mode
+	 */
 	template <typename T, typename U>
 	concept exist_write_access = member_resource_access<T> && member_resource_access<U>
 		&& std::is_same_v<typename T::TType, typename U::TType>
