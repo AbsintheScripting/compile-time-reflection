@@ -6,11 +6,6 @@
 class CFoo
 {
 public:
-	CFoo()
-		: number(0)
-	{
-	}
-
 	void MethodA(CBar& bar)
 	{
 		number = 1;                                    // write access Foo::number
@@ -28,9 +23,14 @@ public:
 	{
 		MethodB(bar);                                  // inherit everything from MethodB
 		std::cout << "Bar string: " << bar.someString; // read access Bar::someString
-		bar.anotherString = "Test";                    // write access Bar::anotherString
+		bar.SetAnotherString("Test");                  // write access Bar::anotherString
 	}
 
+	void ReadSomeString(const CBar& bar)
+	{
+		std::cout << "Bar string: " << bar.someString; // read access Bar::someString
+		number = 2;                                    // write access Foo::number
+	}
 private:
-	int number;
+	int number = 0;
 };

@@ -17,49 +17,45 @@ namespace Meta
 	concept member_resource_access = requires { typename T::TType; typename T::TMember; T::ACCESS_MODE; };
 	template <typename T>
 	concept method_resources = requires { typename T::TTypes; };
+	/**
+	 * \brief Checks if we have the structure of a CMethodResources or CMemberResourceAccess.
+	 * \tparam T The type to check
+	 */
 	template <typename T>
 	concept method_or_member_resources = method_resources<T> || member_resource_access<T>;
 
+	template <typename T>
+	concept public_member_field = requires { typename T::TMemberType; };
+	template <typename T>
+	concept member_field = requires { typename T::TMemberType; T::MEMBER_NAME; };
+	/**
+	 * \brief Checks if we have the structure of a CPublicMember or CMember.
+	 * \tparam T The type to check
+	 */
+	template <typename T>
+	concept member = public_member_field<T> || member_field<T>;
+
 	/*
 	 * ####################################
-	 * resource definition
+	 * helper structures
 	 * ####################################
 	 */
 
-	/**
-	 * \brief Describes the mode for accessing a resource.
-	 */
-	enum class EResourceAccessMode
-	{
-		READ,
-		WRITE
-	};
+	template <typename T>
+	struct CMemberPointerTraits;
 
-	// Public and protected resources
-
-	/**
-	 * \brief Links to the member of some class.
-	 */
-	template <auto>
-	struct CValueHolder
+	template <typename ClassType, typename MemberType>
+	struct CMemberPointerTraits<MemberType ClassType::*>
 	{
+		using TType = MemberType;
 	};
 
 	/**
-	 * \brief Links the access mode with a given class member.
-	 * \tparam T Class
-	 * \tparam MemberPtr public or protected member of the class
-	 * \tparam AccessMode Mode of access
+	 * \brief Gives you the type of a member pointer.
+	 * \tparam T The member pointer type.
 	 */
-	template <typename T, auto MemberPtr, EResourceAccessMode AccessMode>
-	struct CMemberResourceAccess
-	{
-		using TType = T;
-		using TMember = CValueHolder<MemberPtr>;
-		static constexpr EResourceAccessMode ACCESS_MODE = AccessMode;
-	};
-
-	// Private resources
+	template <typename T>
+	using TMemberPointerTraits = typename CMemberPointerTraits<T>::TType;
 
 	/**
 	 * \brief Helper struct to store a string literal in compile time.
@@ -85,36 +81,54 @@ namespace Meta
 		char value[N];
 	};
 
-	/**
-	 * \brief Describes a private member of some class, because you cannot reference private members directly.
-	 * \tparam Type Holds the type of the private data member
-	 * \tparam Name Pass the name of the data member as string into the CStringLiteral helper struct
+	/*
+	 * ####################################
+	 * resource definition
+	 * ####################################
 	 */
-	template <typename Type, CStringLiteral Name>
-	struct CPrivateField
+
+	/**
+	 * \brief Describes the mode for accessing a resource.
+	 */
+	enum class EResourceAccessMode
 	{
-		using TType = Type;
-		static constexpr CStringLiteral NAME = Name;
+		READ,
+		WRITE
 	};
 
 	/**
-	 * \brief Checks if we have the structure of a CPrivateField.
-	 * \tparam T The type to check
+	 * \brief Links to the member of some class.
+	 * \tparam Value Reference to the public data member
 	 */
-	template <typename T>
-	concept private_field = requires { typename T::TType; T::NAME; };
+	template <auto Value>
+	struct CPublicMember
+	{
+		using TMemberType = TMemberPointerTraits<decltype(Value)>;
+	};
+
+	/**
+	 * \brief Describes a protected or private member of some class, because you cannot reference the member directly.
+	 * \tparam Type Holds the type of the data member
+	 * \tparam Name Pass the name of the data member as string into the CStringLiteral helper struct
+	 */
+	template <typename Type, CStringLiteral Name>
+	struct CMember
+	{
+		using TMemberType = std::decay_t<Type>;
+		static constexpr CStringLiteral MEMBER_NAME = Name;
+	};
 
 	/**
 	 * \brief Links the access mode with a given class member.
-	 * \tparam T Class
-	 * \tparam MemberDescription Description of the private member of the class
+	 * \tparam Class Class type
+	 * \tparam Member Description of the member - either a CMember or a CPublicMember
 	 * \tparam AccessMode Mode of access
 	 */
-	template <typename T, private_field MemberDescription, EResourceAccessMode AccessMode>
-	struct CPrivateMemberResourceAccess
+	template <typename Class, member Member, EResourceAccessMode AccessMode>
+	struct CMemberResourceAccess
 	{
-		using TType = T;
-		using TMember = MemberDescription;
+		using TType = std::decay_t<Class>;
+		using TMember = std::decay_t<Member>;
 		static constexpr EResourceAccessMode ACCESS_MODE = AccessMode;
 	};
 
@@ -126,7 +140,7 @@ namespace Meta
 
 	/**
 	 * \brief Holds the list of unique types.
-	 * Can also append the list if the incoming type is unique.
+	 *        Can also append the list if the incoming type is unique.
 	 * \tparam Ts List of unique types
 	 */
 	template <typename... Ts>
@@ -186,7 +200,7 @@ namespace Meta
 
 	/**
 	 * \brief Holds the list of filtered types.
-	 * Can also append the list if the incoming type meets the requirements.
+	 *        Can also append the list if the incoming type meets the requirements.
 	 * \tparam Filtered List of filtered types
 	 */
 	template <member_resource_access... Filtered>
@@ -231,7 +245,7 @@ namespace Meta
 
 	/**
 	 * \brief Filters out types which access the same resource
-	 * by removing the read access and keeping the write access.
+	 *        by removing the read access and keeping the write access.
 	 * \tparam Ts List of resources to check
 	 */
 	template <member_resource_access... Ts>
@@ -270,7 +284,7 @@ namespace Meta
 
 		/**
 		 * \brief Retrieves all resources as member_resource_access type.
-		 * It may have duplicates and/or read and write access for the same resource listed.
+		 *        It may have duplicates and/or read and write access for the same resource listed.
 		 * \return std::tuple<Resources...>
 		 */
 		static constexpr auto GetResources()
@@ -298,4 +312,45 @@ namespace Meta
 			return FilterResources(GetResources()).GetTypesTuple();
 		}
 	};
+
+	/**
+	 * \brief Holds the list of MethodResources.
+	 * \tparam MethodAnnotations List of method resources.
+	 */
+	template <method_resources... MethodAnnotations>
+	struct CMethodResourcesList
+	{
+		using TMethodResources = std::tuple<MethodAnnotations...>;
+	};
+
+	template <typename List, method_resources... MethodAnnotations>
+	struct CRegisterMethodResourcesList
+	{
+		using TList = CMethodResourcesList<MethodAnnotations...>;
+	};
+
+	/**
+	 * \brief Registers all given resources.
+	 * \tparam RegisteredMethodAnnotations List of registered method resources.
+	 * \tparam NewMethodAnnotations List of new method resources.
+	 */
+	template <method_resources... RegisteredMethodAnnotations, method_resources... NewMethodAnnotations>
+	struct CRegisterMethodResourcesList<CMethodResourcesList<RegisteredMethodAnnotations...>, NewMethodAnnotations...>
+	{
+		using TList = CMethodResourcesList<RegisteredMethodAnnotations..., NewMethodAnnotations...>;
+	};
+
+	template <typename Registry, method_resources... NewMethodAnnotations>
+	using TRegisterResources = typename CRegisterMethodResourcesList<Registry, NewMethodAnnotations...>::TList;
+
+	// GlobalMethodResourcesList initialized with an empty MethodResourcesList
+	using TGlobalMethodResourcesList = CMethodResourcesList<>;
+	/**
+	 * \brief Typelist of all method resources.
+	 *
+	 * Add more resources via `using TYourLocalList = TRegisterResources<GLOBAL_METHOD_RESOURCE_LIST, Resource1, Resource2, ...>;`
+	 * Then #undef GLOBAL_METHOD_RESOURCE_LIST
+	 * And #define GLOBAL_METHOD_RESOURCE_LIST TYourLocalList
+	 */
+	#define GLOBAL_METHOD_RESOURCE_LIST TGlobalMethodResourcesList
 }

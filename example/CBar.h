@@ -15,7 +15,14 @@ public:
 		someString = "Test"; // write access Bar::someString
 	}
 
+	void SetAnotherString(const std::string& value)
+	{
+		anotherString = value; // write access Bar::anotherString
+	}
+
 	int someNumber;
 	std::string someString;
+
+protected:
 	std::string anotherString;
 };

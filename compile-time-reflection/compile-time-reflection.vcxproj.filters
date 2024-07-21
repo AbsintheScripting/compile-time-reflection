@@ -28,6 +28,12 @@
     <ClInclude Include="..\include\MetaResourceManager.hpp">
       <Filter>include</Filter>
     </ClInclude>
+    <ClInclude Include="..\example\MetaResourceVisitor.hpp">
+      <Filter>example</Filter>
+    </ClInclude>
+    <ClInclude Include="..\example\Task.hpp">
+      <Filter>example</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\example\main.cpp">

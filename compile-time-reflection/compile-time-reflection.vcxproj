@@ -157,6 +157,8 @@
     <ClInclude Include="..\example\CBar.meta.h" />
     <ClInclude Include="..\example\CFoo.h" />
     <ClInclude Include="..\example\CFoo.meta.h" />
+    <ClInclude Include="..\example\MetaResourceVisitor.hpp" />
+    <ClInclude Include="..\example\Task.hpp" />
     <ClInclude Include="..\include\Meta.hpp" />
     <ClInclude Include="..\include\MetaResourceManager.hpp" />
   </ItemGroup>
