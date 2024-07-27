@@ -21,7 +21,7 @@ public:
 	}
 
 	int someNumber;
-	std::string someString;
+	std::string someString = "Null";
 
 protected:
 	std::string anotherString;

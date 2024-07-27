@@ -130,6 +130,24 @@ namespace Meta
 		using TType = std::decay_t<Class>;
 		using TMember = std::decay_t<Member>;
 		static constexpr EResourceAccessMode ACCESS_MODE = AccessMode;
+
+		// Calculates a hash code based on the combination of TType and TMember
+		static constexpr size_t GetHashCode()
+		{
+			const size_t typeHash = typeid(TType).hash_code();
+			const size_t memberHash = typeid(TMember).hash_code();
+			return CombineHashes(typeHash, memberHash);
+		}
+
+	private:
+		// Combines two hashes by using a prime number and bit-shifting methods to minimize the chance of collision
+		static constexpr size_t CombineHashes(const size_t hash1, const size_t hash2)
+		{
+			constexpr size_t prime = 0x9e3779b9;
+			constexpr size_t shiftLeft = 6;
+			constexpr size_t shiftRight = 2;
+			return hash1 ^ hash2 + prime + (hash1 << shiftLeft) + (hash1 >> shiftRight);
+		}
 	};
 
 	/*
@@ -220,7 +238,7 @@ namespace Meta
 
 		static constexpr TTypes GetTypesTuple()
 		{
-			return TTypes();
+			return TTypes{};
 		}
 	};
 
@@ -309,6 +327,7 @@ namespace Meta
 		 */
 		static constexpr auto GetFilteredResources()
 		{
+			// CFilteredResourceTypeList<Resources...>::TTypes()
 			return FilterResources(GetResources()).GetTypesTuple();
 		}
 	};

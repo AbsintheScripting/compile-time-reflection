@@ -11,18 +11,24 @@
 #include <any>
 #include <functional>
 #include <iostream>
+#include <MetaResourceVisitor.hpp>
+#include <queue>
 #include <thread>
 #include <tuple>
 #include <vector>
 
-#include "MetaResourceManager.hpp"
-#include "MetaResourceVisitor.hpp"
+#include "CTaskScheduler.h"
+#include "MetaResourceList.h"
 #include "Task.hpp"
 
 int main()
 {
+	/***************
+	 * Static tests
+	 ***************/
+
 	// check global registered resources
-	static_assert(std::tuple_size_v<Meta::CResourceVisitor::TResourceTuple> > 0);
+	static_assert(std::tuple_size_v<Meta::TGlobalResourceList> > 0);
 	// check members
 	static_assert(std::is_same_v<Meta::Foo::TNumber::TMemberType, int>);
 	static_assert(Meta::Foo::TNumber::MEMBER_NAME == Meta::CStringLiteral("number"));
@@ -77,19 +83,10 @@ int main()
 	static_assert(std::is_same_v<decltype(TRecursiveMethodResources::GetFilteredResources()),
 	                             std::tuple<TSomeNumberWrite, TSomeStringWrite>>); // filters out TSomeStringRead
 
-	// Init reflection manager
-	constexpr static Meta::CResourceReflectionManager<
-		Meta::Bar::CMethod,
-		Meta::Foo::CMethodA,
-		Meta::Foo::CMethodB,
-		Meta::Foo::CMethodC,
-		Meta::Foo::CReadSomeString
-	> REFLECTION_MANAGER;
-
-	// Retrieve resources
+	// Retrieve filtered resources
 	// type: std::tuple<CSomeNumber<EResourceAccessMode::WRITE>,  // TSomeNumberWrite
 	//                  CSomeString<EResourceAccessMode::WRITE>>  // TSomeStringWrite
-	constexpr auto barMethod = REFLECTION_MANAGER.GetResources<Meta::Bar::CMethod>();
+	constexpr auto barMethod = Meta::Bar::CMethod::GetFilteredResources();
 	static_assert(std::is_same_v<std::decay_t<decltype(barMethod)>,
 	                             std::tuple<TSomeNumberWrite,
 	                                        TSomeStringWrite>>);
@@ -108,7 +105,7 @@ int main()
 	// filtered types: std::tuple<CSomeNumber<EResourceAccessMode::WRITE>,     // TSomeNumberWrite
 	//                            CSomeString<EResourceAccessMode::WRITE>,     // TSomeStringWrite
 	//                            CAnotherString<EResourceAccessMode::WRITE>>  // TAnotherStringWrite
-	constexpr auto fooMethodC = REFLECTION_MANAGER.GetResources<Meta::Foo::CMethodC>();
+	constexpr auto fooMethodC = Meta::Foo::CMethodC::GetFilteredResources();
 	static_assert(std::is_same_v<std::decay_t<decltype(fooMethodC)>,
 	                             std::tuple<TSomeNumberWrite,
 	                                        TSomeStringWrite,
@@ -117,47 +114,78 @@ int main()
 		std::get<0>(fooMethodC).ACCESS_MODE == Meta::EResourceAccessMode::WRITE
 	);
 
-	// Runtime test
+	/***************
+	 * Runtime tests
+	 ***************/
 
+	// Create our test objects
 	const auto myFoo = std::make_unique<CFoo>();
 	const auto myBar = std::make_unique<CBar>();
 
+	// Create some tasks
+	using namespace std::this_thread; // sleep_for, sleep_until
+	using namespace std::chrono; // nanoseconds, system_clock, seconds
+
+	// Task A
 	// Write accesses: Foo::number
 	// Read accesses: Bar::someString
 	std::function funA = [&]()
 	{
+		std::cout << "Execute function A\n";
+		sleep_for(nanoseconds(1000));
 		myFoo->ReadSomeString(*myBar);
+		sleep_for(nanoseconds(1000));
+		std::cout << "Function A end\n";
 	};
 	// type std::tuple< struct Meta::Bar::CSomeString<0>, struct Meta::Foo::CNumber<1> >
 	using TTaskA = CTask<Meta::Foo::CReadSomeString>;
-	auto taskA = std::make_unique<TTaskA>(std::move(funA));
+	auto taskA = std::make_shared<TTaskA>(std::move(funA));
+
+	// Task B
 	// Write accesses: Bar::someNumber and Bar::someString
+	// Read accesses: none
 	std::function funB = [&]()
 	{
+		std::cout << "Execute function B\n";
+		sleep_for(nanoseconds(1000));
 		myBar->Method();
+		sleep_for(nanoseconds(1000));
+		std::cout << "Function B end\n";
 	};
 	// type std::tuple< struct Meta::Bar::CSomeString<1>, struct Meta::Bar::CSomeNumber<1> >
 	using TTaskB = CTask<Meta::Bar::CMethod>;
-	auto taskB = std::make_unique<TTaskB>(std::move(funB));
+	auto taskB = std::make_shared<TTaskB>(std::move(funB));
+
+	// Task C
 	// Write accesses: Bar::anotherString
+	// Read accesses: none
 	std::function funC = [&]()
 	{
+		std::cout << "Execute function C\n";
+		sleep_for(nanoseconds(1000));
 		myBar->SetAnotherString("Test");
+		sleep_for(nanoseconds(1000));
+		std::cout << "Function C end\n";
 	};
 	// type std::tuple< struct Meta::Bar::CAnotherString<1> >
 	using TTaskC = CTask<Meta::Bar::CSetAnotherString>;
-	auto taskC = std::make_unique<TTaskC>(std::move(funC));
+	auto taskC = std::make_shared<TTaskC>(std::move(funC));
 
+	// Add tasks to our scheduler queue and task list
 	// Conflicts: taskA and taskB, because funA wants to read Bar::someString while funB tries to write it
-	std::vector<std::unique_ptr<ITask>> tasks;
-	tasks.push_back(std::move(taskA));
-	tasks.push_back(std::move(taskB));
-	tasks.push_back(std::move(taskC));
-	std::vector<size_t> finishedThreads;
+	std::queue<std::shared_ptr<ITask>> schedulerTaskQueue;
+	schedulerTaskQueue.push(taskA);
+	schedulerTaskQueue.push(taskB);
+	schedulerTaskQueue.push(taskC);
+	std::vector<std::shared_ptr<ITask>> tasks;
+	tasks.push_back(taskA);
+	tasks.push_back(taskB);
+	tasks.push_back(taskC);
+
+	// Print resources
 
 	// Get the global resource list as tuple
-	constexpr auto seqResourceTuple = std::make_index_sequence<std::tuple_size_v<
-		Meta::CResourceVisitor::TResourceTuple>>{};
+	constexpr auto seqResourceTuple = std::make_index_sequence<std::tuple_size_v<Meta::TGlobalResourceList>>{};
 	auto printTuple = [&]<typename Tuple, std::size_t... Is>(std::index_sequence<Is...>, Tuple tuple)
 	{
 		(
@@ -167,8 +195,9 @@ int main()
 			...
 		);
 	};
+	// iterate over the sequence and print all global resources
 	std::cout << "Meta::TResourceTuple types:" << std::endl;
-	printTuple(seqResourceTuple, Meta::CResourceVisitor::TResourceTuple{});
+	printTuple(seqResourceTuple, Meta::TGlobalResourceList{});
 
 	std::cout << "" << std::endl;
 	std::cout << "Task A types:" << std::endl;
@@ -182,29 +211,57 @@ int main()
 	printTuple(seqTaskCTuple, TTaskC::TResources{});
 	std::cout << "" << std::endl;
 
+	// Use resource visitor with global resource list
+	using TResourceVisitor = Meta::CResourceVisitor<Meta::TGlobalResourceList>;
+
+	// lambda for std::apply that prints resource types
+	auto printResources = [&]<Meta::member_resource_access... Ts>(const Ts&... tuple_args)
+	{
+		(
+			(std::cout << "\t\t\t\t"
+				<< typeid(Ts::TType).name() << ", "
+				<< typeid(Ts::TMember).name() << ", "
+				<< static_cast<size_t>(tuple_args.ACCESS_MODE)
+				<< std::endl)
+			, ...
+		);
+	};
+
 	std::cout << "Checking task types:" << std::endl;
 	for (auto&& task : tasks)
 	{
 		std::any resources = task->GetResources();
 		std::type_index typeInfo = resources.type();
 		std::cout << "To check: \t" << typeInfo.name() << " (" << typeInfo.hash_code() << ")" << std::endl;
-		Meta::CResourceVisitor::VisitAny(
+		TResourceVisitor::VisitAny(
 			resources,
 			[&]<typename T>(std::tuple<T> resource_tuple)
 			{
+				// example for T: Meta::Foo::CReadSomeString
 				if constexpr (Meta::method_resources<T>)
 				{
 					std::type_index taskType = typeid(T);
-					auto resourcesTuple = T::GetResources();
+					constexpr auto resourcesTuple = T::GetFilteredResources(); // std::tuple<Resources...>
 					std::type_index taskResourceTuple = typeid(resourcesTuple);
 					std::cout << "Found type: \t\t"
-						<< taskType.name() << " (" << taskType.hash_code() << ")" << std::endl;
+						<< taskType.name() << " (" << taskType.hash_code() << ")"
+						<< std::endl;
 					std::cout << "Resources: \t\t"
-						<< taskResourceTuple.name() << " (" << taskResourceTuple.hash_code() << ")" << std::endl;
+						<< taskResourceTuple.name() << " (" << taskResourceTuple.hash_code() << ")"
+						<< std::endl;
+					// calls printResources for each resource
+					std::apply(printResources, resourcesTuple);
 				}
 			}
 		);
 	}
+
+	// Schedule tasks and execute them
+	// Task A and B execution shall not overlap, since they have a conflicting resource
+	std::cout << "" << std::endl;
+	std::cout << "Executing tasks:" << std::endl;
+	CTaskScheduler taskScheduler{};
+	taskScheduler.OrderAndExecuteTasks(schedulerTaskQueue);
 
 	return 0;
 }

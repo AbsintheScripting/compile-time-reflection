@@ -8,6 +8,12 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
+    <Filter Include="example\include">
+      <UniqueIdentifier>{5d54512e-9d49-4efe-a6e3-3137c9079a6a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="example\include\entt">
+      <UniqueIdentifier>{921dc112-63b0-408f-98b2-d0f7499a2785}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\example\CBar.h">
@@ -25,18 +31,33 @@
     <ClInclude Include="..\include\Meta.hpp">
       <Filter>include</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\MetaResourceManager.hpp">
-      <Filter>include</Filter>
-    </ClInclude>
-    <ClInclude Include="..\example\MetaResourceVisitor.hpp">
-      <Filter>example</Filter>
-    </ClInclude>
     <ClInclude Include="..\example\Task.hpp">
       <Filter>example</Filter>
+    </ClInclude>
+    <ClInclude Include="..\example\CTaskScheduler.h">
+      <Filter>example</Filter>
+    </ClInclude>
+    <ClInclude Include="..\example\include\entt\src\entt\graph\adjacency_matrix.hpp">
+      <Filter>example\include\entt</Filter>
+    </ClInclude>
+    <ClInclude Include="..\example\include\entt\src\entt\graph\dot.hpp">
+      <Filter>example\include\entt</Filter>
+    </ClInclude>
+    <ClInclude Include="..\example\include\entt\src\entt\graph\flow.hpp">
+      <Filter>example\include\entt</Filter>
+    </ClInclude>
+    <ClInclude Include="..\example\MetaResourceList.h">
+      <Filter>example</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\MetaResourceVisitor.hpp">
+      <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\example\main.cpp">
+      <Filter>example</Filter>
+    </ClCompile>
+    <ClCompile Include="..\example\CTaskScheduler.cpp">
       <Filter>example</Filter>
     </ClCompile>
   </ItemGroup>
