@@ -1,5 +1,6 @@
 #pragma once
 #include <algorithm>
+#include <cstddef>
 #include <concepts>
 #include <string_view>
 #include <tuple>
@@ -64,22 +65,38 @@ namespace Meta
 	template <size_t N>
 	struct CStringLiteral
 	{
-		CStringLiteral() = delete;
-
-		explicit constexpr CStringLiteral(const char (&str)[N])
+		// ReSharper disable once CppNonExplicitConvertingConstructor
+		constexpr CStringLiteral(const char (&str)[N])
 		{
-			std::copy_n(str, N, value);
+			std::ranges::copy(str, value);
 		}
 
-		constexpr bool operator==(const CStringLiteral& string_literal) const
+		consteval bool operator==(const CStringLiteral& string_literal) const
 		{
 			std::string_view left = value;
 			std::string_view right = string_literal.value;
 			return std::ranges::equal(left, right);
 		}
 
+		template<size_t N2>
+		consteval bool operator==(const CStringLiteral<N2>) const
+		{
+			return false;
+		}
+
 		char value[N];
 	};
+
+	/**
+	 * @brief User defined operator for creating string literals.
+	 * @tparam S Automatically evaluates the input to a CStringLiteral.
+	 * @return The correct string literal object.
+	 */
+	template <CStringLiteral S>
+	constexpr auto operator""_sl() noexcept
+	{
+		return S;
+	}
 
 	/*
 	 * ####################################

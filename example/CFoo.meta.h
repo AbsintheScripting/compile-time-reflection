@@ -7,7 +7,7 @@
 namespace Meta::Foo
 {
 	// private:
-	using TNumber = CMember<int, CStringLiteral("number")>;
+	using TNumber = CMember<int, "number"_sl>;
 
 	// resources:
 	template <EResourceAccessMode AccessMode>

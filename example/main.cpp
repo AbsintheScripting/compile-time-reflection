@@ -27,6 +27,11 @@ int main()
 	 * Static tests
 	 ***************/
 
+	// check string literals
+	using Meta::operator ""_sl;
+	static_assert(std::same_as<decltype(Meta::CStringLiteral("same")), decltype("same"_sl)>);
+	static_assert(Meta::CStringLiteral("same") == "same"_sl);
+	static_assert(Meta::CStringLiteral("not_same") != "NotSame"_sl);
 	// check global registered resources
 	static_assert(std::tuple_size_v<Meta::TGlobalResourceList> > 0);
 	// check members

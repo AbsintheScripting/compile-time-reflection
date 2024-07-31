@@ -9,7 +9,7 @@ namespace Meta::Bar
 	using TSomeNumber = CPublicMember<&CBar::someNumber>;
 	using TSomeString = CPublicMember<&CBar::someString>;
 	// protected:
-	using TAnotherString = CMember<std::string, CStringLiteral("anotherString")>;
+	using TAnotherString = CMember<std::string, "anotherString"_sl>;
 
 	// resources:
 	template <EResourceAccessMode AccessMode>
