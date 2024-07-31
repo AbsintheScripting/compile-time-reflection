@@ -131,15 +131,16 @@ int main()
 	using namespace std::this_thread; // sleep_for, sleep_until
 	using namespace std::chrono; // nanoseconds, system_clock, seconds
 
+	auto sleepDuration = nanoseconds(1000);
 	// Task A
 	// Write accesses: Foo::number
 	// Read accesses: Bar::someString
 	std::function funA = [&]()
 	{
 		std::cout << "Execute function A\n";
-		sleep_for(nanoseconds(1000));
+		sleep_for(sleepDuration);
 		myFoo->ReadSomeString(*myBar);
-		sleep_for(nanoseconds(1000));
+		sleep_for(sleepDuration);
 		std::cout << "Function A end\n";
 	};
 	// type std::tuple< struct Meta::Bar::CSomeString<0>, struct Meta::Foo::CNumber<1> >
@@ -152,9 +153,9 @@ int main()
 	std::function funB = [&]()
 	{
 		std::cout << "Execute function B\n";
-		sleep_for(nanoseconds(1000));
+		sleep_for(sleepDuration);
 		myBar->Method();
-		sleep_for(nanoseconds(1000));
+		sleep_for(sleepDuration);
 		std::cout << "Function B end\n";
 	};
 	// type std::tuple< struct Meta::Bar::CSomeString<1>, struct Meta::Bar::CSomeNumber<1> >
@@ -167,9 +168,9 @@ int main()
 	std::function funC = [&]()
 	{
 		std::cout << "Execute function C\n";
-		sleep_for(nanoseconds(1000));
+		sleep_for(sleepDuration);
 		myBar->SetAnotherString("Test");
-		sleep_for(nanoseconds(1000));
+		sleep_for(sleepDuration);
 		std::cout << "Function C end\n";
 	};
 	// type std::tuple< struct Meta::Bar::CAnotherString<1> >

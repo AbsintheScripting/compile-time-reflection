@@ -5,13 +5,20 @@
 
 namespace Meta::Bar
 {
+	/************
+	 * Members
+	 ************/
+
 	// public:
 	using TSomeNumber = CPublicMember<&CBar::someNumber>;
 	using TSomeString = CPublicMember<&CBar::someString>;
 	// protected:
 	using TAnotherString = CMember<std::string, "anotherString"_sl>;
 
-	// resources:
+	/************
+	 * Resources
+	 ************/
+
 	template <EResourceAccessMode AccessMode>
 	struct CSomeNumber : CMemberResourceAccess<CBar, TSomeNumber, AccessMode>
 	{
@@ -27,7 +34,10 @@ namespace Meta::Bar
 	{
 	};
 
-	// methods:
+	/************
+	 * Methods
+	 ************/
+
 	struct CPublicReadSomeNumber : CMethodResources<CSomeNumber<EResourceAccessMode::READ>>
 	{
 	};

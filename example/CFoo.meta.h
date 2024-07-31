@@ -6,16 +6,26 @@
 
 namespace Meta::Foo
 {
+	/************
+	 * Members
+	 ************/
+
 	// private:
 	using TNumber = CMember<int, "number"_sl>;
 
-	// resources:
+	/************
+	 * Resources
+	 ************/
+
 	template <EResourceAccessMode AccessMode>
 	struct CNumber : CMemberResourceAccess<CFoo, TNumber, AccessMode>
 	{
 	};
 
-	// methods:
+	/************
+	 * Methods
+	 ************/
+
 	struct CMethodA : CMethodResources<CNumber<EResourceAccessMode::WRITE>,
 	                                   Bar::CSomeNumber<EResourceAccessMode::WRITE>,
 	                                   Bar::CSomeString<EResourceAccessMode::READ>>
