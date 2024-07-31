@@ -151,9 +151,13 @@
   <ItemGroup>
     <ClInclude Include="..\example\CBar.h" />
     <ClInclude Include="..\example\CBar.meta.h" />
+    <ClInclude Include="..\example\CBarFoo.h" />
     <ClInclude Include="..\example\CFoo.h" />
     <ClInclude Include="..\example\CFoo.meta.h" />
+    <ClInclude Include="..\example\CFooBar.h" />
     <ClInclude Include="..\example\CTaskScheduler.h" />
+    <ClInclude Include="..\example\FooBar.meta.h" />
+    <ClInclude Include="..\example\IFooBar.h" />
     <ClInclude Include="..\example\include\entt\src\entt\graph\adjacency_matrix.hpp" />
     <ClInclude Include="..\example\include\entt\src\entt\graph\dot.hpp" />
     <ClInclude Include="..\example\include\entt\src\entt\graph\flow.hpp" />

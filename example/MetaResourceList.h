@@ -3,6 +3,7 @@
 // include all meta resource headers here
 #include "CBar.meta.h"
 #include "CFoo.meta.h"
+#include "FooBar.meta.h"
 
 namespace Meta
 {
