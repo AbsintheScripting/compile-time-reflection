@@ -21,11 +21,12 @@
 #include "MetaResourceList.h"
 #include "Task.hpp"
 
-// Test structures
+// Test structures to test the concepts forward_declared_type and complete_type
 class CIncomplete; // Forward declaration
 
-class CComplete {
-	int data;
+class CComplete
+{
+	int data = 0;
 };
 
 int main()

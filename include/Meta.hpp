@@ -14,24 +14,35 @@ namespace Meta
 	 * ####################################
 	 */
 
-	template<typename T>
+	template <typename T>
 	concept complete_type = requires { sizeof(T); };
-	template<typename T>
+	template <typename T>
 	concept forward_declared_type = !complete_type<T>;
+	/**
+	 * \brief Checks if we have the structure of CMemberResourceAccess.
+	 *        Also allows forward declared (incomplete) types to deal with circular dependency.
+	 * \tparam T The type to check
+	 */
 	template <typename T>
-	concept member_resource_access = requires { typename T::TType; typename T::TMember; T::ACCESS_MODE; };
+	concept member_resource_access =
+		requires { typename T::TType; typename T::TMember; T::ACCESS_MODE; }
+		|| forward_declared_type<T>;
+	/**
+	 * \brief Checks if we have the structure of CMethodResources.
+	 *        Also allows forward declared (incomplete) types to deal with circular dependency.
+	 * \tparam T The type to check
+	 */
 	template <typename T>
-	concept method_resources = requires { typename T::TTypes; };
+	concept method_resources =
+		requires { typename T::TTypes; }
+		|| forward_declared_type<T>;
 	/**
 	 * \brief Checks if we have the structure of a CMethodResources or CMemberResourceAccess.
 	 *        Also allows forward declared (incomplete) types to deal with circular dependency.
 	 * \tparam T The type to check
 	 */
 	template <typename T>
-	concept method_or_member_resources =
-		method_resources<T>
-		|| member_resource_access<T>
-		|| forward_declared_type<T>;
+	concept method_or_member_resources = method_resources<T> || member_resource_access<T>;
 
 	template <typename T>
 	concept public_member_field = requires { typename T::TMemberType; };
@@ -86,7 +97,7 @@ namespace Meta
 			return std::ranges::equal(left, right);
 		}
 
-		template<size_t N2>
+		template <size_t N2>
 		consteval bool operator==(const CStringLiteral<N2>) const
 		{
 			return false;
