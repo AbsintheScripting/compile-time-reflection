@@ -14,16 +14,24 @@ namespace Meta
 	 * ####################################
 	 */
 
+	template<typename T>
+	concept complete_type = requires { sizeof(T); };
+	template<typename T>
+	concept forward_declared_type = !complete_type<T>;
 	template <typename T>
 	concept member_resource_access = requires { typename T::TType; typename T::TMember; T::ACCESS_MODE; };
 	template <typename T>
 	concept method_resources = requires { typename T::TTypes; };
 	/**
 	 * \brief Checks if we have the structure of a CMethodResources or CMemberResourceAccess.
+	 *        Also allows forward declared (incomplete) types to deal with circular dependency.
 	 * \tparam T The type to check
 	 */
 	template <typename T>
-	concept method_or_member_resources = method_resources<T> || member_resource_access<T>;
+	concept method_or_member_resources =
+		method_resources<T>
+		|| member_resource_access<T>
+		|| forward_declared_type<T>;
 
 	template <typename T>
 	concept public_member_field = requires { typename T::TMemberType; };

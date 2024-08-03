@@ -21,12 +21,20 @@
 #include "MetaResourceList.h"
 #include "Task.hpp"
 
+// Test structures
+class CIncomplete; // Forward declaration
+
+class CComplete {
+	int data;
+};
+
 int main()
 {
 	/***************
 	 * Static tests
 	 ***************/
-
+	static_assert(Meta::forward_declared_type<CIncomplete>, "CIncomplete should be an incomplete type");
+	static_assert(Meta::complete_type<CComplete>, "CComplete should be a complete type");
 	// check string literals
 	using Meta::operator ""_sl;
 	static_assert(std::same_as<decltype(Meta::CStringLiteral("same")), decltype("same"_sl)>);
