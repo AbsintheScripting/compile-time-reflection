@@ -20,12 +20,12 @@ allowing your task scheduler to order and execute tasks safely and efficiently.
 
 The core functionality of this project is to provide a mechanism for identifying and managing resource access in a multi-threaded environment.
 This involves:
-- Declaring resources of a class:
+- **Declaring resources of a class:**
     The `Meta.hpp` file provides helper structs for efficiently declaring members and methods for use in your multi-threaded system.
-- Resource Access Modes:
+- **Resource Access Modes:**
     When declaring methods, you specify the accessed resources as either read or write mode.
     Later, when declaring accessed resources for your task, you only need to specify the called methods, and the resources will be filtered out.
-- Extracting resource types:
+- **Extracting resource types:**
     The resource-visitor provides an efficient way to extract meta-information about your declared resources, which can then be used by your task scheduler
 
 ## Example
@@ -73,7 +73,7 @@ namespace Meta::Foo
 	// public:
 	using TSomeNumber = CPublicMember<&CFoo::someNumber>;
 	// private:
-	using TSomeString = CMember<std::string, CStringLiteral("someString")>;
+	using TSomeString = CMember<std::string, "someString"_sl>;
 
 	// resources:
 	template <EResourceAccessMode AccessMode>
