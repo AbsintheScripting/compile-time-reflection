@@ -20,25 +20,19 @@ namespace Meta
 	concept forward_declared_type = !complete_type<T>;
 	/**
 	 * \brief Checks if we have the structure of CMemberResourceAccess.
-	 *        Also allows forward declared (incomplete) types to deal with circular dependency.
 	 * \tparam T The type to check
 	 */
 	template <typename T>
-	concept member_resource_access =
-		requires { typename T::TType; typename T::TMember; T::ACCESS_MODE; }
-		|| forward_declared_type<T>;
+	concept member_resource_access = requires { typename T::TType; typename T::TMember; T::ACCESS_MODE; };
 	/**
 	 * \brief Checks if we have the structure of CMethodResources.
 	 *        Also allows forward declared (incomplete) types to deal with circular dependency.
 	 * \tparam T The type to check
 	 */
 	template <typename T>
-	concept method_resources =
-		requires { typename T::TTypes; }
-		|| forward_declared_type<T>;
+	concept method_resources = requires { typename T::TTypes; } || forward_declared_type<T>;
 	/**
 	 * \brief Checks if we have the structure of a CMethodResources or CMemberResourceAccess.
-	 *        Also allows forward declared (incomplete) types to deal with circular dependency.
 	 * \tparam T The type to check
 	 */
 	template <typename T>
