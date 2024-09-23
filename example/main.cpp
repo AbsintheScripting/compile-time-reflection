@@ -186,16 +186,31 @@ int main()
 	using TTaskC = CTask<Meta::Bar::CSetAnotherString>;
 	auto taskC = std::make_shared<TTaskC>(std::move(funC));
 
+	// Task D
+	// Write accesses: none
+	// Read accesses: none
+	std::function funD = [&]()
+	{
+		std::cout << "Execute function D\n";
+		sleep_for(sleepDuration);
+		std::cout << "Function D end\n";
+	};
+	// type std::tuple< struct Meta::CNoResource<0> >
+	using TTaskD = CTask<Meta::CNoResources>;
+	auto taskD = std::make_shared<TTaskD>(std::move(funD));
+
 	// Add tasks to our scheduler queue and task list
 	// Conflicts: taskA and taskB, because funA wants to read Bar::someString while funB tries to write it
 	std::queue<std::shared_ptr<ITask>> schedulerTaskQueue;
 	schedulerTaskQueue.push(taskA);
 	schedulerTaskQueue.push(taskB);
 	schedulerTaskQueue.push(taskC);
+	schedulerTaskQueue.push(taskD);
 	std::vector<std::shared_ptr<ITask>> tasks;
 	tasks.push_back(taskA);
 	tasks.push_back(taskB);
 	tasks.push_back(taskC);
+	tasks.push_back(taskD);
 
 	// Print resources
 
@@ -224,6 +239,9 @@ int main()
 	std::cout << "Task C types:" << std::endl;
 	constexpr auto seqTaskCTuple = std::make_index_sequence<std::tuple_size_v<TTaskC::TResources>>{};
 	printTuple(seqTaskCTuple, TTaskC::TResources{});
+	std::cout << "Task D types:" << std::endl;
+	constexpr auto seqTaskDTuple = std::make_index_sequence<std::tuple_size_v<TTaskD::TResources>>{};
+	printTuple(seqTaskDTuple, TTaskD::TResources{});
 	std::cout << "" << std::endl;
 
 	// Use resource visitor with global resource list

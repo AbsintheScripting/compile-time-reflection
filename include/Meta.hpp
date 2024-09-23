@@ -401,8 +401,18 @@ namespace Meta
 	template <typename Registry, method_resources... NewMethodAnnotations>
 	using TRegisterResources = typename CRegisterMethodResourcesList<Registry, NewMethodAnnotations...>::TList;
 
-	// GlobalMethodResourcesList initialized with an empty MethodResourcesList
-	using TGlobalMethodResourcesList = CMethodResourcesList<>;
+	// empty type
+	struct CNoType{};
+	template <EResourceAccessMode AccessMode>
+	struct CNoResource : CMemberResourceAccess<CNoType, CMember<void, "noType"_sl>, AccessMode>{};
+	/**
+	 * \brief In case you access no resources in your task (empty type list) but get into trouble with the ResourceVisitor which expects a non-empty type list.
+	 */
+	struct CNoResources : CMethodResources<CNoResource<EResourceAccessMode::READ>>{};
+
+	// GlobalMethodResourcesList initialized with a MethodResourcesList holding the special MNoResources resource
+	using TGlobalMethodResourcesList = CMethodResourcesList<CNoResources>;
+
 	/**
 	 * \brief Typelist of all method resources.
 	 *
