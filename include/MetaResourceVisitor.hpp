@@ -1,7 +1,7 @@
 #pragma once
 
 #include <any>
-#include <iostream>
+#include <cassert>
 #include <tuple>
 #include <typeindex>
 
@@ -37,7 +37,7 @@ namespace Meta
 		static void VisitAnyImpl(const std::any&, F&&, std::index_sequence<>)
 		{
 			// Handle the case where type does not match any type in the tuple
-			std::cout << "Type not found in the tuple.\n";
+			assert(false && "Type not found in the tuple.");
 		}
 
 		// Recursive helper to call the visitor with the type contained in std::any
