@@ -133,8 +133,8 @@ int main()
 	 ***************/
 
 	// Create our test objects
-	const auto myFoo = std::make_unique<CFoo>();
-	const auto myBar = std::make_unique<CBar>();
+	auto myFoo = std::make_unique<CFoo>();
+	auto myBar = std::make_unique<CBar>();
 
 	// Create some tasks
 	using namespace std::this_thread; // sleep_for, sleep_until
@@ -199,6 +199,22 @@ int main()
 	using TTaskD = CTask<Meta::CNoResources>;
 	auto taskD = std::make_shared<TTaskD>(std::move(funD));
 
+	// Task E
+	// Write accesses: none
+	// Read accesses: none
+	std::function funE = [&]()
+	{
+		std::cout << "Execute function E\n";
+		sleep_for(sleepDuration);
+		myFoo->MethodA(*myBar);
+		myFoo->MethodB(*myBar);
+		myFoo->MethodC(*myBar);
+		std::cout << "Function E end\n";
+	};
+	// type std::tuple<  >
+	using TTaskE = CTask<Meta::Foo::CMethodA, Meta::Foo::CMethodB, Meta::Foo::CMethodC>;
+	auto taskE = std::make_shared<TTaskE>(std::move(funE));
+
 	// Add tasks to our scheduler queue and task list
 	// Conflicts: taskA and taskB, because funA wants to read Bar::someString while funB tries to write it
 	std::queue<std::shared_ptr<ITask>> schedulerTaskQueue;
@@ -206,11 +222,13 @@ int main()
 	schedulerTaskQueue.push(taskB);
 	schedulerTaskQueue.push(taskC);
 	schedulerTaskQueue.push(taskD);
+	schedulerTaskQueue.push(taskE);
 	std::vector<std::shared_ptr<ITask>> tasks;
 	tasks.push_back(taskA);
 	tasks.push_back(taskB);
 	tasks.push_back(taskC);
 	tasks.push_back(taskD);
+	tasks.push_back(taskE);
 
 	// Print resources
 
@@ -242,6 +260,9 @@ int main()
 	std::cout << "Task D types:" << std::endl;
 	constexpr auto seqTaskDTuple = std::make_index_sequence<std::tuple_size_v<TTaskD::TResources>>{};
 	printTuple(seqTaskDTuple, TTaskD::TResources{});
+	std::cout << "Task E types:" << std::endl;
+	constexpr auto seqTaskETuple = std::make_index_sequence<std::tuple_size_v<TTaskE::TResources>>{};
+	printTuple(seqTaskETuple, TTaskE::TResources{});
 	std::cout << "" << std::endl;
 
 	// Use resource visitor with global resource list
