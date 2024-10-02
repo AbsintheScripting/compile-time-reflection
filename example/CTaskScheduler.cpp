@@ -19,38 +19,13 @@ void CTaskScheduler::OrderAndExecuteTasks(std::queue<std::shared_ptr<ITask>> tas
 	std::vector<std::shared_ptr<ITask>> taskList;
 	taskList.reserve(task_queue.size());
 
-	// lambda for std::apply
-	auto registerResources = [&]<Meta::member_resource_access... Ts>(const Ts&... tuple_args)
-	{
-		((tuple_args.ACCESS_MODE == Meta::EResourceAccessMode::WRITE
-			  ? builder.rw(tuple_args.GetHashCode())
-			  : builder.ro(tuple_args.GetHashCode()))
-			, ...);
-	};
-
 	while (!task_queue.empty())
 	{
 		taskList.push_back(std::move(task_queue.front()));
 		task_queue.pop();
 
-		auto taskId = reinterpret_cast<entt::id_type>(
-			static_cast<void*>(taskList.back().get()) // <- use pointer as uid
-		);
-		builder.bind(taskId);
-
-		std::any taskResources = taskList.back()->GetResources();
-		TResourceVisitor::VisitAny(
-			taskResources,
-			[&]<typename T>(std::tuple<T> resources_tuple)
-			{
-				if constexpr (Meta::method_resources<T>)
-				{
-					// resource list as std::tuple
-					constexpr auto filteredResources = T::GetFilteredResources();
-					std::apply(registerResources, filteredResources);
-				}
-			}
-		);
+		auto task = taskList.back();
+		task->AddTaskToBuilder(builder);
 	}
 
 	// build taskQueue main

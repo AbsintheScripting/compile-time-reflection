@@ -263,51 +263,44 @@ int main()
 	std::cout << "Task E types:" << std::endl;
 	constexpr auto seqTaskETuple = std::make_index_sequence<std::tuple_size_v<TTaskE::TResources>>{};
 	printTuple(seqTaskETuple, TTaskE::TResources{});
+	std::cout << "Task E filtered resources:" << std::endl;
+	printTuple(seqTaskETuple, TTaskE::GetFilteredResources());
 	std::cout << "" << std::endl;
 
 	// Use resource visitor with global resource list
 	using TResourceVisitor = Meta::CResourceVisitor<Meta::TGlobalResourceList>;
 
-	// lambda for std::apply that prints resource types
-	auto printResources = [&]<Meta::member_resource_access... Ts>(const Ts&... tuple_args)
-	{
-		(
-			(std::cout << "\t\t\t\t"
-				<< typeid(Ts::TType).name() << ", "
-				<< typeid(Ts::TMember).name() << ", "
-				<< static_cast<size_t>(tuple_args.ACCESS_MODE)
-				<< std::endl)
-			, ...
-		);
-	};
-
 	std::cout << "Checking task types:" << std::endl;
 	for (auto&& task : tasks)
 	{
-		std::any resources = task->GetResources();
+		std::any resources = task->GetMetaResources();
 		std::type_index typeInfo = resources.type();
-		std::cout << "To check: \t" << typeInfo.name() << " (" << typeInfo.hash_code() << ")" << std::endl;
-		TResourceVisitor::VisitAny(
-			resources,
-			[&]<typename T>(std::tuple<T> resource_tuple)
-			{
-				// example for T: Meta::Foo::CReadSomeString
-				if constexpr (Meta::method_resources<T>)
+		std::cout << "Task: \t" << typeInfo.name() << " (" << typeInfo.hash_code() << ")" << std::endl;
+		size_t numResources = task->GetNumResources();
+		for (size_t idx = 0; idx < numResources; ++idx)
+		{
+			resources = task->GetMetaResource(idx);
+			typeInfo = resources.type();
+			std::cout << "\t" << (idx + 1) << ". check:\t" << typeInfo.name() << " (" << typeInfo.hash_code() << ")" << std::endl;
+			TResourceVisitor::VisitAny(
+				resources,
+				[&]<typename T>(std::tuple<T> resource_tuple)
 				{
-					std::type_index taskType = typeid(T);
-					constexpr auto resourcesTuple = T::GetFilteredResources(); // std::tuple<Resources...>
-					std::type_index taskResourceTuple = typeid(resourcesTuple);
-					std::cout << "Found type: \t\t"
-						<< taskType.name() << " (" << taskType.hash_code() << ")"
-						<< std::endl;
-					std::cout << "Resources: \t\t"
-						<< taskResourceTuple.name() << " (" << taskResourceTuple.hash_code() << ")"
-						<< std::endl;
-					// calls printResources for each resource
-					std::apply(printResources, resourcesTuple);
+					if constexpr (Meta::method_resources<T>)
+					{
+						std::type_index taskType = typeid(T);
+						constexpr auto resourcesTuple = T::GetFilteredResources(); // std::tuple<Resources...>
+						std::type_index taskResourceTuple = typeid(resourcesTuple);
+						std::cout << "\tFound type:\t"
+							<< taskType.name() << " (" << taskType.hash_code() << ")"
+							<< std::endl;
+						std::cout << "\tResources:\t"
+							<< taskResourceTuple.name() << " (" << taskResourceTuple.hash_code() << ")"
+							<< std::endl;
+					}
 				}
-			}
-		);
+			);
+		}
 	}
 
 	// Schedule tasks and execute them
