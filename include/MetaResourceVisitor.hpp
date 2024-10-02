@@ -45,7 +45,9 @@ namespace Meta
 		static void VisitAnyImpl(const std::any& resource, F&& call_with, std::index_sequence<Idx, Rest...>)
 		{
 			using TCurrentType = std::tuple_element_t<Idx, ResourceTuple>;
-			if (resource.type() == typeid(std::tuple<TCurrentType>))
+			const std::type_index currentTypeToCheck = typeid(TCurrentType);
+			const std::type_index resourceType = resource.type();
+			if (resourceType == currentTypeToCheck)
 				CallWith<TCurrentType>(std::forward<F>(call_with));
 			else
 				VisitAnyImpl(resource, std::forward<F>(call_with), std::index_sequence<Rest...>{});
