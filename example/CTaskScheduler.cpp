@@ -7,6 +7,8 @@
 #define ENTT_ID_TYPE std::uint64_t
 #endif
 // defined id type before include
+#include <ranges>
+
 #include <include/entt/src/entt/graph/flow.hpp>
 
 #include "MetaResourceVisitor.hpp"
@@ -38,8 +40,9 @@ void CTaskScheduler::OrderAndExecuteTasks(std::queue<std::shared_ptr<ITask>> tas
 		if (auto inEdges = graph.in_edges(vertex); inEdges.begin() == inEdges.end())
 			scheduledTasks.push(vertex);
 
+	using TReserved = bool; // to reserve a spot in the executedTasks vector
 	// hold references to all async threads until this vector goes out of scope
-	std::vector<TAsyncTaskPtr> executedTasks(graph.size());
+	std::vector<std::pair<TReserved,TAsyncTaskPtr>> executedTasks(graph.size());
 	// execute all tasks in a certain order
 	while (!scheduledTasks.empty())
 	{
@@ -50,11 +53,11 @@ void CTaskScheduler::OrderAndExecuteTasks(std::queue<std::shared_ptr<ITask>> tas
 		TAsyncTaskPtr pFuture = std::make_shared<TAsyncTask>();
 
 		// save reference to std::future beyond this while loop
-		executedTasks.at(taskVertex) = pFuture;
+		executedTasks.at(taskVertex) = {true, pFuture};
 		// list of async threads from parents, moved into lambda capture
 		std::deque<std::weak_ptr<TAsyncTask>> parentTasks;
 		for (auto&& [parent, child] : graph.in_edges(taskVertex))
-			if (const auto& pParentFuture = executedTasks.at(parent))
+			if (const auto& pParentFuture = executedTasks.at(parent).second)
 				parentTasks.emplace_back(pParentFuture);
 
 		// start async thread to do the work, thread is managed by OS
@@ -74,13 +77,21 @@ void CTaskScheduler::OrderAndExecuteTasks(std::queue<std::shared_ptr<ITask>> tas
 
 		// add all children of current vertex to the task queue
 		for (auto&& [parent, child] : graph.out_edges(taskVertex))
-			scheduledTasks.push(child);
+		{
+			// if the task hasn't been reserved yet, we add it to the scheduled list
+			if (!executedTasks.at(child).first)
+			{
+				// reserve the spot, so it won't get taken multiple times
+				executedTasks.at(child).first = true;
+				scheduledTasks.push(child);
+			}
+		}
 	}
 
 	// wait for all started threads,
 	// so in the next tick the script-thread doesn't start
 	// before the last async thread has finished execution
-	for (auto&& pTask : executedTasks)
-		if (pTask)
-			pTask->wait();
+	for (TAsyncTaskPtr& val : executedTasks | std::views::values)
+		if (val)
+			val->wait();
 }

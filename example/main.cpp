@@ -141,6 +141,7 @@ int main()
 	using namespace std::chrono; // nanoseconds, system_clock, seconds
 
 	auto sleepDuration = nanoseconds(1000);
+	auto sleepDurationD = seconds(1);
 	// Task A
 	// Write accesses: Foo::number
 	// Read accesses: Bar::someString
@@ -192,7 +193,7 @@ int main()
 	std::function funD = [&]()
 	{
 		std::cout << "Execute function D\n";
-		sleep_for(sleepDuration);
+		sleep_for(sleepDurationD);
 		std::cout << "Function D end\n";
 	};
 	// type std::tuple< struct Meta::CNoResource<0> >
@@ -209,9 +210,14 @@ int main()
 		myFoo->MethodA(*myBar);
 		myFoo->MethodB(*myBar);
 		myFoo->MethodC(*myBar);
+		sleep_for(sleepDuration);
 		std::cout << "Function E end\n";
 	};
-	// type std::tuple<  >
+	// type CMethodA std::tuple<struct Meta::Foo::CNumber<1>,struct Meta::Bar::CSomeNumber<1>,struct Meta::Bar::CSomeString<0> >
+	// type CMethodB std::tuple<struct Meta::Bar::CSomeNumber<1>,struct Meta::Bar::CSomeString<1> >
+	// type CMethodC std::tuple<struct Meta::Bar::CSomeNumber<1>,struct Meta::Bar::CSomeString<1>,struct Meta::Bar::CAnotherString<1> >
+
+	// type filtered std::tuple<struct Meta::Foo::CNumber<1>,struct Meta::Bar::CSomeNumber<1>,struct Meta::Bar::CSomeString<1>,struct Meta::Bar::CAnotherString<1> >
 	using TTaskE = CTask<Meta::Foo::CMethodA, Meta::Foo::CMethodB, Meta::Foo::CMethodC>;
 	auto taskE = std::make_shared<TTaskE>(std::move(funE));
 
@@ -264,7 +270,9 @@ int main()
 	constexpr auto seqTaskETuple = std::make_index_sequence<std::tuple_size_v<TTaskE::TResources>>{};
 	printTuple(seqTaskETuple, TTaskE::TResources{});
 	std::cout << "Task E filtered resources:" << std::endl;
-	printTuple(seqTaskETuple, TTaskE::GetFilteredResources());
+	constexpr auto filteredResources = TTaskE::GetFilteredResources();
+	constexpr auto seqFilteredResources = std::make_index_sequence<std::tuple_size_v<decltype(filteredResources)>>{};
+	printTuple(seqFilteredResources, filteredResources);
 	std::cout << "" << std::endl;
 
 	// Use resource visitor with global resource list
@@ -305,6 +313,8 @@ int main()
 
 	// Schedule tasks and execute them
 	// Task A and B execution shall not overlap, since they have a conflicting resource
+	// Task E has conflicts with A, B and C
+	// Task D has no conflicts and can run in parallel with all tasks
 	std::cout << "" << std::endl;
 	std::cout << "Executing tasks:" << std::endl;
 	CTaskScheduler taskScheduler{};
