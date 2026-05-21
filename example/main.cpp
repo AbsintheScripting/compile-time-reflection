@@ -21,41 +21,27 @@
 #include "MetaResourceList.h"
 #include "Task.hpp"
 
-// Test structures to test the concepts forward_declared_type and complete_type
-class CIncomplete; // Forward declaration
-
-class CComplete
-{
-	int data = 0;
-};
-
 int main()
 {
 	/***************
 	 * Static tests
 	 ***************/
-	static_assert(Meta::forward_declared_type<CIncomplete>, "CIncomplete should be an incomplete type");
-	static_assert(Meta::complete_type<CComplete>, "CComplete should be a complete type");
-	// check string literals
-	using Meta::operator ""_sl;
-	static_assert(std::same_as<decltype(Meta::CStringLiteral("same")), decltype("same"_sl)>);
-	static_assert(Meta::CStringLiteral("same") == "same"_sl);
-	static_assert(Meta::CStringLiteral("not_same") != "NotSame"_sl);
 	// check global registered resources
 	static_assert(std::tuple_size_v<Meta::TGlobalResourceList> > 0);
-	// check members
-	static_assert(std::is_same_v<Meta::Foo::TNumber::TMemberType, int>);
-	static_assert(Meta::Foo::TNumber::MEMBER_NAME == Meta::CStringLiteral("number"));
-	static_assert(std::is_same_v<Meta::Bar::TSomeNumber::TMemberType, int>);
-	static_assert(std::is_same_v<Meta::Bar::TSomeString::TMemberType, std::string>);
-	static_assert(std::is_same_v<Meta::Bar::TAnotherString::TMemberType, std::string>);
-	static_assert(Meta::Bar::TAnotherString::MEMBER_NAME == Meta::CStringLiteral("anotherString"));
+	// check members via C++26 reflection
+	using TMode = Meta::EResourceAccessMode;
+	static_assert(std::is_same_v<typename [:std::meta::type_of(CFoo::_meta::TNumber<TMode::READ>::MEMBER_INFO):], int>);
+	static_assert(std::meta::identifier_of(CFoo::_meta::TNumber<TMode::READ>::MEMBER_INFO) == std::string_view("number"));
+	static_assert(std::is_same_v<typename [:std::meta::type_of(CBar::_meta::TSomeNumber<TMode::READ>::MEMBER_INFO):], int>);
+	static_assert(std::is_same_v<typename [:std::meta::type_of(CBar::_meta::TSomeString<TMode::READ>::MEMBER_INFO):], std::string>);
+	static_assert(std::is_same_v<typename [:std::meta::type_of(CBar::_meta::TAnotherString<TMode::READ>::MEMBER_INFO):], std::string>);
+	static_assert(std::meta::identifier_of(CBar::_meta::TAnotherString<TMode::READ>::MEMBER_INFO) == std::string_view("anotherString"));
 
 	// define aliases to check
-	using TSomeNumberWrite = Meta::Bar::CSomeNumber<Meta::EResourceAccessMode::WRITE>;
-	using TSomeStringRead = Meta::Bar::CSomeString<Meta::EResourceAccessMode::READ>;
-	using TSomeStringWrite = Meta::Bar::CSomeString<Meta::EResourceAccessMode::WRITE>;
-	using TAnotherStringWrite = Meta::Bar::CAnotherString<Meta::EResourceAccessMode::WRITE>;
+	using TSomeNumberWrite = CBar::_meta::TSomeNumber<Meta::EResourceAccessMode::WRITE>;
+	using TSomeStringRead = CBar::_meta::TSomeString<Meta::EResourceAccessMode::READ>;
+	using TSomeStringWrite = CBar::_meta::TSomeString<Meta::EResourceAccessMode::WRITE>;
+	using TAnotherStringWrite = CBar::_meta::TAnotherString<Meta::EResourceAccessMode::WRITE>;
 	using TSomeMethodResources = Meta::CMethodResources<TSomeNumberWrite, TSomeStringWrite>;
 
 	// check TUniqueTypes
@@ -84,11 +70,11 @@ int main()
 	                             std::tuple<TSomeStringWrite,
 	                                        TSomeNumberWrite>>);
 	static_assert(std::is_same_v<Meta::Foo::CMethodB::TTypes,
-	                             std::tuple<TSomeStringRead,
+	                             std::tuple<Meta::Bar::CPublicReadSomeString,
 	                                        Meta::Bar::CMethod>>);
 	static_assert(std::is_same_v<Meta::Foo::CMethodC::TTypes,
-	                             std::tuple<TAnotherStringWrite,
-	                                        TSomeStringRead,
+	                             std::tuple<Meta::Bar::CSetAnotherString,
+	                                        Meta::Bar::CPublicReadSomeString,
 	                                        Meta::Foo::CMethodB>>);
 	// check recursion (by mixing a CMethodResources' param pack with a CMethodResources and a CMemberResourceAccess)
 	using TRecursiveMethodResources = Meta::CMethodResources<TSomeMethodResources, TSomeStringRead>;

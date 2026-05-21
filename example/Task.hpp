@@ -100,7 +100,7 @@ void CTask<MethodAnnotations...>::AddTaskToBuilder(entt::flow& builder)
 {
 	constexpr auto resources = GetFilteredResources();
 	// lambda for std::apply
-	auto registerResources = [&]<Meta::member_resource_access... Ts>(const Ts&... tuple_args)
+	auto registerResources = [&]<Meta::resource_access... Ts>(const Ts&... tuple_args)
 	{
 		((tuple_args.ACCESS_MODE == Meta::EResourceAccessMode::WRITE
 			  ? builder.rw(tuple_args.GetHashCode())

@@ -1,4 +1,6 @@
 #pragma once
+#include <MetaResource.hpp>
+
 #include "IFooBar.h"
 
 class CBarFoo : public IFooBar
@@ -18,4 +20,11 @@ public:
 
 private:
 	int barFooNum = 0;
+
+public:
+	struct _meta
+	{
+		template <Meta::EResourceAccessMode Mode>
+		using TBarFooNum = Meta::CResourceAccess<^^CBarFoo::barFooNum, Mode>;
+	};
 };

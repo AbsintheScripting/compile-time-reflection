@@ -1,5 +1,7 @@
 #pragma once
 
+#include <MetaResource.hpp>
+
 // Interface for CFooBar and CBarFoo
 class IFooBar
 {
@@ -15,4 +17,11 @@ public:
 
 protected:
 	int fooBarNum = 0;
+
+public:
+	struct _meta
+	{
+		template <Meta::EResourceAccessMode Mode>
+		using TFooBarNum = Meta::CResourceAccess<^^IFooBar::fooBarNum, Mode>;
+	};
 };

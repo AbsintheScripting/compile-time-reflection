@@ -1,5 +1,5 @@
 # Compile-Time Reflection System for Resource Management
-[![C++20](https://img.shields.io/badge/dialect-C%2B%2B20-blue)](https://en.cppreference.com/w/cpp/20)
+[![C++26](https://img.shields.io/badge/dialect-C%2B%2B26-blue)](https://en.cppreference.com/w/cpp/26)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 This project provides a header-only solution for a compile-time reflection system designed for resource management.
@@ -58,7 +58,7 @@ public:
 	void MethodCallingMethod(CFoo& foo)
 	{
 		foo.Method();                                  // inherit resources from CFoo::Method
-		std::cout << "Foo string: " << foo.someString; // read access someString
+		std::cout << "Foo number: " << foo.someNumber; // read access to public someNumber
 	}
 }
 ```
@@ -66,35 +66,57 @@ public:
 For both classes we declare the meta-information that we use later
 when declaring the accessed resources in our tasks.
 
+CFoo.h:
+```cpp
+class CFoo
+{
+public:
+	void Method();
+
+	int someNumber = 0;
+private:
+	std::string someString;
+
+public:
+	struct _meta
+	{
+		template <Meta::EResourceAccessMode Mode>
+		using TSomeNumber = Meta::CResourceAccess<^^CBar::someNumber, Mode>;
+		template <Meta::EResourceAccessMode Mode>
+		using TSomeString = Meta::CResourceAccess<^^CBar::someString, Mode>;
+	};
+};
+```
+
 CFoo.meta.h:
 ```cpp
 namespace Meta::Foo
 {
-	// public:
-	using TSomeNumber = CPublicMember<&CFoo::someNumber>;
-	// private:
-	using TSomeString = CMember<std::string, "someString"_sl>;
+	struct CPublicReadSomeNumber : CMethodResources<CFoo::_meta::TSomeNumber<EResourceAccessMode::READ>>{};
+	struct CPublicWriteSomeNumber : CMethodResources<CFoo::_meta::TSomeNumber<EResourceAccessMode::WRITE>>{};
 
-	// resources:
-	template <EResourceAccessMode AccessMode>
-	struct CSomeNumber : CMemberResourceAccess<CFoo, TSomeNumber, AccessMode> {};
-	template <EResourceAccessMode AccessMode>
-	struct CSomeString : CMemberResourceAccess<CFoo, TSomeString, AccessMode> {};
-
-	// methods:
-	struct CMethod : CMethodResources<CSomeNumber<EResourceAccessMode::WRITE>,
-	                                  CSomeString<EResourceAccessMode::WRITE>> {};
-	struct CPublicReadSomeNumber : CMethodResources<CSomeNumber<EResourceAccessMode::READ>>{};
-	struct CPublicWriteSomeNumber : CMethodResources<CSomeNumber<EResourceAccessMode::WRITE>>{};
+	struct CMethod : CMethodResources<CFoo::_meta::TSomeNumber<EResourceAccessMode::WRITE>,
+	                                  CFoo::_meta::TSomeString<EResourceAccessMode::WRITE>>{};
 }
 
 namespace Meta
 {
-	// all:
-	using TFooResourcesList = TRegisterResources<GLOBAL_METHOD_RESOURCE_LIST, Foo::CMethod,
-	                                             Foo::CPublicReadSomeNumber, Foo::CPublicWriteSomeNumber>;
+	// append all defined method resources to the global list:
+	using TFooResourcesList = TRegisterResources<GLOBAL_METHOD_RESOURCE_LIST,
+	                                             Foo::CPublicReadSomeNumber,
+	                                             Foo::CPublicWriteSomeNumber,
+	                                             Foo::CMethod>;
 	#undef GLOBAL_METHOD_RESOURCE_LIST
 	#define GLOBAL_METHOD_RESOURCE_LIST TFooResourcesList
+}
+```
+
+CBar.h:
+```cpp
+class CBar
+{
+public:
+	void MethodCallingMethod(CFoo& foo);
 }
 ```
 
@@ -104,12 +126,12 @@ namespace Meta::Bar
 {
 	// methods:
 	struct CMethodCallingMethod : CMethodResources<Foo::CMethod,
-	                                               Foo::CSomeString<EResourceAccessMode::READ>> {};
+	                                               Foo::CPublicReadSomeNumber> {};
 }
 
 namespace Meta
 {
-	// all:
+	// append all defined method resources to the global list:
 	using TBarResourcesList = TRegisterResources<GLOBAL_METHOD_RESOURCE_LIST, Bar::CMethodCallingMethod>;
 	#undef GLOBAL_METHOD_RESOURCE_LIST
 	#define GLOBAL_METHOD_RESOURCE_LIST TBarResourcesList

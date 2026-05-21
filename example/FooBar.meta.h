@@ -9,44 +9,6 @@
 namespace Meta::FooBar
 {
 	/************
-	 * Members
-	 ************/
-
-	// IFooBar
-	// protected:
-	using TFooBarNum = CMember<int, "fooBarNum"_sl>;
-
-	// CFooBar
-	// private:
-	using TOtherFooBarNum = CMember<int, "otherFooBarNum"_sl>;
-
-	// CBarFoo
-	// private:
-	using TBarFooNum = CMember<int, "barFooNum"_sl>;
-
-	/************
-	 * Resources
-	 ************/
-
-	// IFooBar
-	template <EResourceAccessMode AccessMode>
-	struct CFooBarNum : CMemberResourceAccess<IFooBar, TFooBarNum, AccessMode>
-	{
-	};
-
-	// CFooBar
-	template <EResourceAccessMode AccessMode>
-	struct COtherFooBarNum : CMemberResourceAccess<CFooBar, TOtherFooBarNum, AccessMode>
-	{
-	};
-
-	// CBarFoo
-	template <EResourceAccessMode AccessMode>
-	struct CBarFooNum : CMemberResourceAccess<CBarFoo, TBarFooNum, AccessMode>
-	{
-	};
-
-	/************
 	 * Methods
 	 ************/
 
@@ -54,21 +16,21 @@ namespace Meta::FooBar
 	// use the name of the class + name of the method
 
 	// CFooBar
-	struct CFooBarAbstractMethod : CMethodResources<CFooBarNum<EResourceAccessMode::READ>>
+	struct CFooBarAbstractMethod : CMethodResources<IFooBar::_meta::TFooBarNum<EResourceAccessMode::READ>>
 	{
 	};
 
-	struct CFooBarVirtualMethod : CMethodResources<COtherFooBarNum<EResourceAccessMode::WRITE>,
-	                                               CFooBarNum<EResourceAccessMode::READ>>
+	struct CFooBarVirtualMethod : CMethodResources<CFooBar::_meta::TOtherFooBarNum<EResourceAccessMode::WRITE>,
+	                                               IFooBar::_meta::TFooBarNum<EResourceAccessMode::READ>>
 	{
 	};
 
 	// CBarFoo
-	struct CBarFooAbstractMethod : CMethodResources<CBarFooNum<EResourceAccessMode::READ>>
+	struct CBarFooAbstractMethod : CMethodResources<CBarFoo::_meta::TBarFooNum<EResourceAccessMode::READ>>
 	{
 	};
 
-	struct CBarFooVirtualMethod : CMethodResources<CFooBarNum<EResourceAccessMode::READ>>
+	struct CBarFooVirtualMethod : CMethodResources<IFooBar::_meta::TFooBarNum<EResourceAccessMode::READ>>
 	{
 	};
 
@@ -84,7 +46,7 @@ namespace Meta::FooBar
 
 	struct IFooBarVirtualMethod : CMethodResources<CFooBarVirtualMethod,
 	                                               CBarFooVirtualMethod,
-	                                               CFooBarNum<EResourceAccessMode::WRITE>>
+	                                               IFooBar::_meta::TFooBarNum<EResourceAccessMode::WRITE>>
 	{
 	};
 }

@@ -6,60 +6,31 @@
 namespace Meta::Bar
 {
 	/************
-	 * Members
-	 ************/
-
-	// public:
-	using TSomeNumber = CPublicMember<&CBar::someNumber>;
-	using TSomeString = CPublicMember<&CBar::someString>;
-	// protected:
-	using TAnotherString = CMember<std::string, "anotherString"_sl>;
-
-	/************
-	 * Resources
-	 ************/
-
-	template <EResourceAccessMode AccessMode>
-	struct CSomeNumber : CMemberResourceAccess<CBar, TSomeNumber, AccessMode>
-	{
-	};
-
-	template <EResourceAccessMode AccessMode>
-	struct CSomeString : CMemberResourceAccess<CBar, TSomeString, AccessMode>
-	{
-	};
-
-	template <EResourceAccessMode AccessMode>
-	struct CAnotherString : CMemberResourceAccess<CBar, TAnotherString, AccessMode>
-	{
-	};
-
-	/************
 	 * Methods
 	 ************/
 
-	struct CPublicReadSomeNumber : CMethodResources<CSomeNumber<EResourceAccessMode::READ>>
+	struct CPublicReadSomeNumber : CMethodResources<CBar::_meta::TSomeNumber<EResourceAccessMode::READ>>
 	{
 	};
 
-	struct CPublicWriteSomeNumber : CMethodResources<CSomeNumber<EResourceAccessMode::WRITE>>
+	struct CPublicWriteSomeNumber : CMethodResources<CBar::_meta::TSomeNumber<EResourceAccessMode::WRITE>>
 	{
 	};
 
-	struct CPublicReadSomeString : CMethodResources<CSomeString<EResourceAccessMode::READ>>
+	struct CPublicReadSomeString : CMethodResources<CBar::_meta::TSomeString<EResourceAccessMode::READ>>
 	{
 	};
 
-	struct CPublicWriteSomeString : CMethodResources<CSomeString<EResourceAccessMode::WRITE>>
+	struct CPublicWriteSomeString : CMethodResources<CBar::_meta::TSomeString<EResourceAccessMode::WRITE>>
 	{
 	};
 
-	struct CMethod : CMethodResources<CSomeNumber<EResourceAccessMode::WRITE>,
-	                                  CSomeString<EResourceAccessMode::WRITE>>
+	struct CMethod : CMethodResources<CBar::_meta::TSomeNumber<EResourceAccessMode::WRITE>,
+	                                  CBar::_meta::TSomeString<EResourceAccessMode::WRITE>>
 	{
 	};
 
-	struct CSetAnotherString : CMethodResources<CAnotherString<EResourceAccessMode::WRITE>>
+	struct CSetAnotherString : CMethodResources<CBar::_meta::TAnotherString<EResourceAccessMode::WRITE>>
 	{
 	};
 }

@@ -1,10 +1,9 @@
 #pragma once
-#include <algorithm>
 #include <cstddef>
-#include <concepts>
-#include <string_view>
 #include <tuple>
 #include <type_traits>
+
+#include "MetaResource.hpp"
 
 namespace Meta
 {
@@ -14,20 +13,6 @@ namespace Meta
 	 * ####################################
 	 */
 
-	template <typename T>
-	concept complete_type = requires { sizeof(T); };
-	/**
-	 * \brief Checks if we have a forward declared (incomplete) type to deal with circular dependency.
-	 * \tparam T The type to check
-	 */
-	template <typename T>
-	concept forward_declared_type = !complete_type<T>;
-	/**
-	 * \brief Checks if we have the structure of CMemberResourceAccess.
-	 * \tparam T The type to check
-	 */
-	template <typename T>
-	concept member_resource_access = requires { typename T::TType; typename T::TMember; T::ACCESS_MODE; };
 	/**
 	 * \brief Checks if we have the structure of CMethodResources.
 	 * \tparam T The type to check
@@ -35,159 +20,17 @@ namespace Meta
 	template <typename T>
 	concept is_method_resource = requires { typename T::TTypes; };
 	/**
-	 * \brief Checks if we have a forward declared type or a method resource
+	 * \brief Checks if we have a method resource.
 	 * \tparam T The type to check
 	 */
 	template <typename T>
-	concept method_resources = forward_declared_type<T> || is_method_resource<T>;
+	concept method_resources = is_method_resource<T>;
 	/**
-	 * \brief Checks if we have the structure of a CMethodResources or CMemberResourceAccess.
+	 * \brief Checks if we have the structure of a CMethodResources or CResourceAccess.
 	 * \tparam T The type to check
 	 */
 	template <typename T>
-	concept method_or_member_resources = method_resources<T> || member_resource_access<T>;
-
-	template <typename T>
-	concept public_member_field = requires { typename T::TMemberType; };
-	template <typename T>
-	concept member_field = requires { typename T::TMemberType; T::MEMBER_NAME; };
-	/**
-	 * \brief Checks if we have the structure of a CPublicMember or CMember.
-	 * \tparam T The type to check
-	 */
-	template <typename T>
-	concept member = public_member_field<T> || member_field<T>;
-
-	/*
-	 * ####################################
-	 * helper structures
-	 * ####################################
-	 */
-
-	template <typename T>
-	struct CMemberPointerTraits;
-
-	template <typename ClassType, typename MemberType>
-	struct CMemberPointerTraits<MemberType ClassType::*>
-	{
-		using TType = MemberType;
-	};
-
-	/**
-	 * \brief Gives you the type of a member pointer.
-	 * \tparam T The member pointer type.
-	 */
-	template <typename T>
-	using TMemberPointerTraits = typename CMemberPointerTraits<T>::TType;
-
-	/**
-	 * \brief Helper struct to store a string literal in compile time.
-	 * \tparam N Size of the string literal. Usually the compiler can figure that out.
-	 */
-	template <size_t N>
-	struct CStringLiteral
-	{
-		// ReSharper disable once CppNonExplicitConvertingConstructor
-		constexpr CStringLiteral(const char (&str)[N])
-		{
-			std::ranges::copy(str, value);
-		}
-
-		consteval bool operator==(const CStringLiteral& string_literal) const
-		{
-			std::string_view left = value;
-			std::string_view right = string_literal.value;
-			return std::ranges::equal(left, right);
-		}
-
-		template <size_t N2>
-		consteval bool operator==(const CStringLiteral<N2>) const
-		{
-			return false;
-		}
-
-		char value[N];
-	};
-
-	/**
-	 * @brief User defined operator for creating string literals.
-	 * @tparam S Automatically evaluates the input to a CStringLiteral.
-	 * @return The correct string literal object.
-	 */
-	template <CStringLiteral S>
-	constexpr auto operator""_sl() noexcept
-	{
-		return S;
-	}
-
-	/*
-	 * ####################################
-	 * resource definition
-	 * ####################################
-	 */
-
-	/**
-	 * \brief Describes the mode for accessing a resource.
-	 */
-	enum class EResourceAccessMode
-	{
-		READ,
-		WRITE
-	};
-
-	/**
-	 * \brief Links to the member of some class.
-	 * \tparam Value Reference to the public data member
-	 */
-	template <auto Value>
-	struct CPublicMember
-	{
-		using TMemberType = TMemberPointerTraits<decltype(Value)>;
-	};
-
-	/**
-	 * \brief Describes a protected or private member of some class, because you cannot reference the member directly.
-	 * \tparam Type Holds the type of the data member
-	 * \tparam Name Pass the name of the data member as string into the CStringLiteral helper struct
-	 */
-	template <typename Type, CStringLiteral Name>
-	struct CMember
-	{
-		using TMemberType = std::decay_t<Type>;
-		static constexpr CStringLiteral MEMBER_NAME = Name;
-	};
-
-	/**
-	 * \brief Links the access mode with a given class member.
-	 * \tparam Class Class type
-	 * \tparam Member Description of the member - either a CMember or a CPublicMember
-	 * \tparam AccessMode Mode of access
-	 */
-	template <typename Class, member Member, EResourceAccessMode AccessMode>
-	struct CMemberResourceAccess
-	{
-		using TType = std::decay_t<Class>;
-		using TMember = std::decay_t<Member>;
-		static constexpr EResourceAccessMode ACCESS_MODE = AccessMode;
-
-		// Calculates a hash code based on the combination of TType and TMember
-		static constexpr size_t GetHashCode()
-		{
-			const size_t typeHash = typeid(TType).hash_code();
-			const size_t memberHash = typeid(TMember).hash_code();
-			return CombineHashes(typeHash, memberHash);
-		}
-
-	private:
-		// Combines two hashes by using a prime number and bit-shifting methods to minimize the chance of collision
-		static constexpr size_t CombineHashes(const size_t hash1, const size_t hash2)
-		{
-			constexpr size_t prime = 0x9e3779b9;
-			constexpr size_t shiftLeft = 6;
-			constexpr size_t shiftRight = 2;
-			return hash1 ^ hash2 + prime + (hash1 << shiftLeft) + (hash1 >> shiftRight);
-		}
-	};
+	concept method_or_member_resources = method_resources<T> || resource_access<T>;
 
 	/*
 	 * ####################################
@@ -250,27 +93,27 @@ namespace Meta
 	 * \tparam U To check if it accesses the same resource in write mode
 	 */
 	template <typename T, typename U>
-	concept exist_write_access = member_resource_access<T> && member_resource_access<U>
-		&& std::is_same_v<typename T::TType, typename U::TType>
-		&& std::is_same_v<typename T::TMember, typename U::TMember>
-		&& T::ACCESS_MODE == EResourceAccessMode::READ && U::ACCESS_MODE == EResourceAccessMode::WRITE;
+	concept exist_write_access = resource_access<T> && resource_access<U>
+		&& (T::MEMBER_INFO == U::MEMBER_INFO)
+		&& T::ACCESS_MODE == EResourceAccessMode::READ
+		&& U::ACCESS_MODE == EResourceAccessMode::WRITE;
 
 	/**
 	 * \brief Holds the list of filtered types.
 	 *        Can also append the list if the incoming type meets the requirements.
 	 * \tparam Filtered List of filtered types
 	 */
-	template <member_resource_access... Filtered>
+	template <resource_access... Filtered>
 	struct CFilteredResourceTypeList
 	{
 		using TTypes = std::tuple<Filtered...>;
 
-		template <member_resource_access T, member_resource_access... Unfiltered>
+		template <resource_access T, resource_access... Unfiltered>
 		static constexpr bool EXIST_WRITE = (exist_write_access<T, Unfiltered> || ...);
-		template <member_resource_access T>
+		template <resource_access T>
 		static constexpr bool READ = T::ACCESS_MODE == EResourceAccessMode::READ;
 
-		template <member_resource_access T, member_resource_access... Unfiltered>
+		template <resource_access T, resource_access... Unfiltered>
 		using TAppendFiltered = std::conditional_t<READ<T> && EXIST_WRITE<T, Unfiltered...>,
 		                                           CFilteredResourceTypeList<Filtered...>,
 		                                           CFilteredResourceTypeList<T, Filtered...>>;
@@ -284,14 +127,14 @@ namespace Meta
 	template <typename...>
 	struct CResourceTypeList;
 
-	template <member_resource_access... Unfiltered>
+	template <resource_access... Unfiltered>
 	struct CResourceTypeList<std::tuple<Unfiltered...>>
 	{
 		// base type, no Ts left
 		using TFilter = CFilteredResourceTypeList<>;
 	};
 
-	template <member_resource_access... Unfiltered, member_resource_access T, member_resource_access... Ts>
+	template <resource_access... Unfiltered, resource_access T, resource_access... Ts>
 	struct CResourceTypeList<std::tuple<Unfiltered...>, T, Ts...>
 	{
 		// reduce CResourceTypeList<...> by T and check if T should be appended to CFilteredResourceTypeList
@@ -305,7 +148,7 @@ namespace Meta
 	 *        by removing the read access and keeping the write access.
 	 * \tparam Ts List of resources to check
 	 */
-	template <member_resource_access... Ts>
+	template <resource_access... Ts>
 	using TResourceTypes = typename CResourceTypeList<std::tuple<Ts...>, Ts...>::TFilter;
 
 	/*
@@ -316,31 +159,35 @@ namespace Meta
 
 	/**
 	 * \brief Describes which resources are accessed for a specific method.
-	 * \tparam Resources List of CMethodResources and CMemberResourceAccess
+	 *        Template parameters are unconstrained to allow forward-declared method resource types,
+	 *        which are resolved at a later point.
+	 * \tparam Resources List of CMethodResources and CResourceAccess
 	 */
-	template <method_or_member_resources... Resources>
+	template <typename... Resources>
 	struct CMethodResources : TUniqueTypes<Resources...>
 	{
 		using TTypes = typename TUniqueTypes<Resources...>::TTypes;
 
 		/**
-		 * \brief Checks the given Resource and returns CMemberResourceAccess types wrapped in a tuple
-		 * \tparam Resource CMethodResources or CMemberResourceAccess
+		 * \brief Checks the given Resource and returns CResourceAccess types wrapped in a tuple.
+		 * \tparam Resource CMethodResources or CResourceAccess
 		 * \return std::tuple<Resource> or std::tuple<Resources...>
 		 */
-		template <method_or_member_resources Resource>
+		template <typename Resource>
 		static constexpr auto GetResource()
 		{
-			// we have a CMemberResourceAccess type
-			if constexpr (member_resource_access<Resource>)
+			// we have a CResourceAccess type
+			if constexpr (resource_access<Resource>)
 				return std::tuple<Resource>();
-			// we have a CMethodResources type and have to get the resources recursive
-			if constexpr (method_resources<Resource>)
+			// we have a CMethodResources type and have to get the resources recursively
+			else if constexpr (is_method_resource<Resource>)
 				return Resource::GetResources();
+			else
+				static_assert(false, "Invalid resource type provided");
 		}
 
 		/**
-		 * \brief Retrieves all resources as member_resource_access type.
+		 * \brief Retrieves all resources as resource_access types.
 		 *        It may have duplicates and/or read and write access for the same resource listed.
 		 * \return std::tuple<Resources...>
 		 */
@@ -401,16 +248,12 @@ namespace Meta
 	template <typename Registry, method_resources... NewMethodAnnotations>
 	using TRegisterResources = typename CRegisterMethodResourcesList<Registry, NewMethodAnnotations...>::TList;
 
-	// empty type
-	struct CNoType{};
-	template <EResourceAccessMode AccessMode>
-	struct CNoResource : CMemberResourceAccess<CNoType, CMember<void, "noType"_sl>, AccessMode>{};
 	/**
-	 * \brief In case you access no resources in your task (empty type list) but get into trouble with the ResourceVisitor which expects a non-empty type list.
+	 * \brief In case you access no resources in your task (empty type list).
 	 */
 	struct CNoResources : CMethodResources<CNoResource<EResourceAccessMode::READ>>{};
 
-	// GlobalMethodResourcesList initialized with a MethodResourcesList holding the special MNoResources resource
+	// GlobalMethodResourcesList initialized with a MethodResourcesList holding the CNoResources sentinel
 	using TGlobalMethodResourcesList = CMethodResourcesList<CNoResources>;
 
 	/**

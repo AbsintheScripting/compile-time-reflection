@@ -1,6 +1,8 @@
 #pragma once
 #include <string>
 
+#include <MetaResource.hpp>
+
 class CBar
 {
 public:
@@ -25,4 +27,15 @@ public:
 
 protected:
 	std::string anotherString;
+
+public:
+	struct _meta
+	{
+		template <Meta::EResourceAccessMode Mode>
+		using TSomeNumber = Meta::CResourceAccess<^^CBar::someNumber, Mode>;
+		template <Meta::EResourceAccessMode Mode>
+		using TSomeString = Meta::CResourceAccess<^^CBar::someString, Mode>;
+		template <Meta::EResourceAccessMode Mode>
+		using TAnotherString = Meta::CResourceAccess<^^CBar::anotherString, Mode>;
+	};
 };

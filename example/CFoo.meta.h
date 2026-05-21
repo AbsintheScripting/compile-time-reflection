@@ -7,44 +7,28 @@
 namespace Meta::Foo
 {
 	/************
-	 * Members
-	 ************/
-
-	// private:
-	using TNumber = CMember<int, "number"_sl>;
-
-	/************
-	 * Resources
-	 ************/
-
-	template <EResourceAccessMode AccessMode>
-	struct CNumber : CMemberResourceAccess<CFoo, TNumber, AccessMode>
-	{
-	};
-
-	/************
 	 * Methods
 	 ************/
 
-	struct CMethodA : CMethodResources<CNumber<EResourceAccessMode::WRITE>,
-	                                   Bar::CSomeNumber<EResourceAccessMode::WRITE>,
-	                                   Bar::CSomeString<EResourceAccessMode::READ>>
+	struct CMethodA : CMethodResources<CFoo::_meta::TNumber<EResourceAccessMode::WRITE>,
+	                                   Bar::CMethod,
+	                                   Bar::CPublicReadSomeString>
 	{
 	};
 
 	struct CMethodB : CMethodResources<Bar::CMethod,
-	                                   Bar::CSomeString<EResourceAccessMode::READ>>
+	                                   Bar::CPublicReadSomeString>
 	{
 	};
 
 	struct CMethodC : CMethodResources<CMethodB,
-	                                   Bar::CSomeString<EResourceAccessMode::READ>,
-	                                   Bar::CAnotherString<EResourceAccessMode::WRITE>>
+	                                   Bar::CPublicReadSomeString,
+	                                   Bar::CSetAnotherString>
 	{
 	};
 
-	struct CReadSomeString : CMethodResources<CNumber<EResourceAccessMode::WRITE>,
-	                                          Bar::CSomeString<EResourceAccessMode::READ>>
+	struct CReadSomeString : CMethodResources<CFoo::_meta::TNumber<EResourceAccessMode::WRITE>,
+	                                          Bar::CPublicReadSomeString>
 	{
 	};
 }

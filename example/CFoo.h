@@ -1,6 +1,8 @@
 #pragma once
 #include <iostream>
 
+#include <MetaResource.hpp>
+
 #include "CBar.h"
 
 class CFoo
@@ -33,4 +35,11 @@ public:
 	}
 private:
 	int number = 0;
+
+public:
+	struct _meta
+	{
+		template <Meta::EResourceAccessMode Mode>
+		using TNumber = Meta::CResourceAccess<^^CFoo::number, Mode>;
+	};
 };
