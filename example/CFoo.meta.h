@@ -6,38 +6,28 @@
 
 namespace Meta::Foo
 {
-	/************
-	 * Methods
-	 ************/
+/************
+ * Methods
+ ************/
 
-	struct CMethodA : CMethodResources<CFoo::_meta::TNumber<EResourceAccessMode::WRITE>,
-	                                   Bar::CMethod,
-	                                   Bar::CPublicReadSomeString>
-	{
-	};
+struct MMethodA : CFoo::CMeta::TMethodA
+{};
 
-	struct CMethodB : CMethodResources<Bar::CMethod,
-	                                   Bar::CPublicReadSomeString>
-	{
-	};
+struct MMethodB : CFoo::CMeta::TMethodB
+{};
 
-	struct CMethodC : CMethodResources<CMethodB,
-	                                   Bar::CPublicReadSomeString,
-	                                   Bar::CSetAnotherString>
-	{
-	};
+struct MMethodC : CFoo::CMeta::TMethodC
+{};
 
-	struct CReadSomeString : CMethodResources<CFoo::_meta::TNumber<EResourceAccessMode::WRITE>,
-	                                          Bar::CPublicReadSomeString>
-	{
-	};
+struct MReadSomeString : CFoo::CMeta::TReadSomeString
+{};
 }
 
 namespace Meta
 {
-	// all:
-	using TFooResourcesList = TRegisterResources<GLOBAL_METHOD_RESOURCE_LIST,
-	                                             Foo::CMethodA, Foo::CMethodB, Foo::CMethodC, Foo::CReadSomeString>;
-	#undef GLOBAL_METHOD_RESOURCE_LIST
-	#define GLOBAL_METHOD_RESOURCE_LIST TFooResourcesList
+// all:
+using TFooResourcesList = TRegisterResources<GLOBAL_METHOD_RESOURCE_LIST,
+                                             Foo::MMethodA, Foo::MMethodB, Foo::MMethodC, Foo::MReadSomeString>;
+#undef GLOBAL_METHOD_RESOURCE_LIST
+#define GLOBAL_METHOD_RESOURCE_LIST TFooResourcesList
 }

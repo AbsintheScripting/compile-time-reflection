@@ -8,59 +8,43 @@
 
 namespace Meta::FooBar
 {
-	/************
-	 * Methods
-	 ************/
+/************
+ * Methods
+ ************/
 
-	// derived first
-	// use the name of the class + name of the method
+// IFooBar
+struct MIFooBarAbstractMethod : IFooBar::CMeta::TAbstractMethod
+{};
 
-	// CFooBar
-	struct CFooBarAbstractMethod : CMethodResources<IFooBar::_meta::TFooBarNum<EResourceAccessMode::READ>>
-	{
-	};
+struct MIFooBarVirtualMethod : IFooBar::CMeta::TVirtualMethod
+{};
 
-	struct CFooBarVirtualMethod : CMethodResources<CFooBar::_meta::TOtherFooBarNum<EResourceAccessMode::WRITE>,
-	                                               IFooBar::_meta::TFooBarNum<EResourceAccessMode::READ>>
-	{
-	};
+// CFooBar
+struct MCFooBarAbstractMethod : CFooBar::CMeta::TAbstractMethod
+{};
 
-	// CBarFoo
-	struct CBarFooAbstractMethod : CMethodResources<CBarFoo::_meta::TBarFooNum<EResourceAccessMode::READ>>
-	{
-	};
+struct MCFooBarVirtualMethod : CFooBar::CMeta::TVirtualMethod
+{};
 
-	struct CBarFooVirtualMethod : CMethodResources<IFooBar::_meta::TFooBarNum<EResourceAccessMode::READ>>
-	{
-	};
+// CBarFoo
+struct MCBarFooAbstractMethod : CBarFoo::CMeta::TAbstractMethod
+{};
 
-	// IFooBar
-	// Since we don't know which derived class is going to be used at runtime,
-	// we include the resource definitions from all derived classes at compile-time
-	// and from IFooBar itself.
-	// The type list filters will deal with duplicates and read-write pairs.
+struct MCBarFooVirtualMethod : CBarFoo::CMeta::TVirtualMethod
+{};
 
-	struct IFooBarAbstractMethod : CMethodResources<CFooBarAbstractMethod, CBarFooAbstractMethod>
-	{
-	};
-
-	struct IFooBarVirtualMethod : CMethodResources<CFooBarVirtualMethod,
-	                                               CBarFooVirtualMethod,
-	                                               IFooBar::_meta::TFooBarNum<EResourceAccessMode::WRITE>>
-	{
-	};
 }
 
 namespace Meta
 {
-	// all:
-	using TFooBarResourcesList = TRegisterResources<GLOBAL_METHOD_RESOURCE_LIST,
-	                                                FooBar::IFooBarAbstractMethod,
-	                                                FooBar::IFooBarVirtualMethod,
-	                                                FooBar::CFooBarAbstractMethod,
-	                                                FooBar::CFooBarVirtualMethod,
-	                                                FooBar::CBarFooAbstractMethod,
-	                                                FooBar::CBarFooVirtualMethod>;
+// all:
+using TFooBarResourcesList = TRegisterResources<GLOBAL_METHOD_RESOURCE_LIST,
+                                                FooBar::MIFooBarAbstractMethod,
+                                                FooBar::MIFooBarVirtualMethod,
+                                                FooBar::MCFooBarAbstractMethod,
+                                                FooBar::MCFooBarVirtualMethod,
+                                                FooBar::MCBarFooAbstractMethod,
+                                                FooBar::MCBarFooVirtualMethod>;
 #undef GLOBAL_METHOD_RESOURCE_LIST
 #define GLOBAL_METHOD_RESOURCE_LIST TFooBarResourcesList
 }

@@ -11,6 +11,7 @@
 #include <any>
 #include <functional>
 #include <iostream>
+#include <Meta.hpp>
 #include <MetaResourceVisitor.hpp>
 #include <queue>
 #include <thread>
@@ -30,19 +31,26 @@ int main()
 	static_assert(std::tuple_size_v<Meta::TGlobalResourceList> > 0);
 	// check members via C++26 reflection
 	using TMode = Meta::EResourceAccessMode;
-	static_assert(std::is_same_v<typename [:std::meta::type_of(CFoo::_meta::TNumber<TMode::READ>::MEMBER_INFO):], int>);
-	static_assert(std::meta::identifier_of(CFoo::_meta::TNumber<TMode::READ>::MEMBER_INFO) == std::string_view("number"));
-	static_assert(std::is_same_v<typename [:std::meta::type_of(CBar::_meta::TSomeNumber<TMode::READ>::MEMBER_INFO):], int>);
-	static_assert(std::is_same_v<typename [:std::meta::type_of(CBar::_meta::TSomeString<TMode::READ>::MEMBER_INFO):], std::string>);
-	static_assert(std::is_same_v<typename [:std::meta::type_of(CBar::_meta::TAnotherString<TMode::READ>::MEMBER_INFO):], std::string>);
-	static_assert(std::meta::identifier_of(CBar::_meta::TAnotherString<TMode::READ>::MEMBER_INFO) == std::string_view("anotherString"));
+	static_assert(std::is_same_v<typename [:std::meta::type_of(CFoo::CMeta::TNumber<TMode::READ>::MEMBER_INFO):], int>);
+	static_assert(std::meta::identifier_of(CFoo::CMeta::TNumber<TMode::READ>::MEMBER_INFO) == std::string_view("number"));
+	static_assert(std::is_same_v<typename [:std::meta::type_of(CBar::CMeta::TSomeNumber<TMode::READ>::MEMBER_INFO):], int>);
+	static_assert(std::is_same_v<typename [:std::meta::type_of(CBar::CMeta::TSomeString<TMode::READ>::MEMBER_INFO):], std::string>);
+	static_assert(std::is_same_v<typename [:std::meta::type_of(CBar::CMeta::TAnotherString<TMode::READ>::MEMBER_INFO):], std::string>);
+	static_assert(
+		std::meta::identifier_of(CBar::CMeta::TAnotherString<TMode::READ>::MEMBER_INFO)
+		== std::string_view("anotherString")
+	);
 
 	// define aliases to check
-	using TSomeNumberWrite = CBar::_meta::TSomeNumber<Meta::EResourceAccessMode::WRITE>;
-	using TSomeStringRead = CBar::_meta::TSomeString<Meta::EResourceAccessMode::READ>;
-	using TSomeStringWrite = CBar::_meta::TSomeString<Meta::EResourceAccessMode::WRITE>;
-	using TAnotherStringWrite = CBar::_meta::TAnotherString<Meta::EResourceAccessMode::WRITE>;
+	using TSomeNumberWrite = CBar::CMeta::TSomeNumber<TMode::WRITE>;
+	using TSomeStringRead = CBar::CMeta::TSomeString<TMode::READ>;
+	using TSomeStringWrite = CBar::CMeta::TSomeString<TMode::WRITE>;
+	using TAnotherStringWrite = CBar::CMeta::TAnotherString<TMode::WRITE>;
 	using TSomeMethodResources = Meta::CMethodResources<TSomeNumberWrite, TSomeStringWrite>;
+	using TFooBarNumRead = IFooBar::CMeta::TFooBarNum<TMode::READ>;
+	using TFooBarNumWrite = IFooBar::CMeta::TFooBarNum<TMode::WRITE>;
+	using TBarFooNumRead = CBarFoo::CMeta::TBarFooNum<TMode::READ>;
+	using TOtherFooBarNumWrite = CFooBar::CMeta::TOtherFooBarNum<TMode::WRITE>;
 
 	// check TUniqueTypes
 	static_assert(std::is_same_v<Meta::TUniqueTypes<TSomeStringRead, TSomeStringRead, TSomeStringWrite>,
@@ -65,17 +73,24 @@ int main()
 		                             ::GetFilteredResources()
 	                             ),
 	                             std::tuple<TSomeStringWrite>>); // filters out TSomeStringRead
-	// check CMethodResources::TTypes (like TUniqueTypes but as tuple and in inverse order)
-	static_assert(std::is_same_v<Meta::Bar::CMethod::TTypes,
-	                             std::tuple<TSomeStringWrite,
-	                                        TSomeNumberWrite>>);
-	static_assert(std::is_same_v<Meta::Foo::CMethodB::TTypes,
-	                             std::tuple<Meta::Bar::CPublicReadSomeString,
-	                                        Meta::Bar::CMethod>>);
-	static_assert(std::is_same_v<Meta::Foo::CMethodC::TTypes,
-	                             std::tuple<Meta::Bar::CSetAnotherString,
-	                                        Meta::Bar::CPublicReadSomeString,
-	                                        Meta::Foo::CMethodB>>);
+	// check Methods have the right resources
+	static_assert(std::is_same_v<decltype(CFoo::CMeta::TMethodA::GetFilteredResources()),
+	                             std::tuple<CFoo::CMeta::TNumber<TMode::WRITE>,
+	                                        TSomeNumberWrite,
+	                                        TSomeStringRead>>);
+	static_assert(std::is_same_v<decltype(CFoo::CMeta::TMethodB::GetFilteredResources()),
+	                             std::tuple<TSomeNumberWrite,
+	                                        TSomeStringWrite>>);
+	static_assert(std::is_same_v<decltype(CFoo::CMeta::TMethodC::GetFilteredResources()),
+	                             std::tuple<TSomeNumberWrite,
+	                                        TSomeStringWrite,
+	                                        TAnotherStringWrite>>);
+	static_assert(std::is_same_v<decltype(IFooBar::CMeta::TAbstractMethod::GetFilteredResources()),
+	                             std::tuple<TFooBarNumRead,
+	                                        TBarFooNumRead>>);
+	static_assert(std::is_same_v<decltype(IFooBar::CMeta::TVirtualMethod::GetFilteredResources()),
+	                             std::tuple<TOtherFooBarNumWrite,
+	                                        TFooBarNumWrite>>);
 	// check recursion (by mixing a CMethodResources' param pack with a CMethodResources and a CMemberResourceAccess)
 	using TRecursiveMethodResources = Meta::CMethodResources<TSomeMethodResources, TSomeStringRead>;
 	static_assert(std::is_same_v<decltype(TRecursiveMethodResources::GetResources()),
@@ -86,15 +101,15 @@ int main()
 	// Retrieve filtered resources
 	// type: std::tuple<CSomeNumber<EResourceAccessMode::WRITE>,  // TSomeNumberWrite
 	//                  CSomeString<EResourceAccessMode::WRITE>>  // TSomeStringWrite
-	constexpr auto barMethod = Meta::Bar::CMethod::GetFilteredResources();
+	constexpr auto barMethod = Meta::Bar::MMethod::GetFilteredResources();
 	static_assert(std::is_same_v<std::decay_t<decltype(barMethod)>,
 	                             std::tuple<TSomeNumberWrite,
 	                                        TSomeStringWrite>>);
 	static_assert( // CSomeNumber<EResourceAccessMode::WRITE>
-		std::get<0>(barMethod).ACCESS_MODE == Meta::EResourceAccessMode::WRITE
+		std::get<0>(barMethod).ACCESS_MODE == TMode::WRITE
 	);
 	static_assert( // CSomeString<EResourceAccessMode::WRITE>
-		std::get<1>(barMethod).ACCESS_MODE == Meta::EResourceAccessMode::WRITE
+		std::get<1>(barMethod).ACCESS_MODE == TMode::WRITE
 	);
 	// input types:    std::tuple<CSomeNumber<EResourceAccessMode::WRITE>,     // TSomeNumberWrite
 	//                            CSomeString<EResourceAccessMode::WRITE>,     // TSomeStringWrite
@@ -105,14 +120,24 @@ int main()
 	// filtered types: std::tuple<CSomeNumber<EResourceAccessMode::WRITE>,     // TSomeNumberWrite
 	//                            CSomeString<EResourceAccessMode::WRITE>,     // TSomeStringWrite
 	//                            CAnotherString<EResourceAccessMode::WRITE>>  // TAnotherStringWrite
-	constexpr auto fooMethodC = Meta::Foo::CMethodC::GetFilteredResources();
+	constexpr auto fooMethodC = Meta::Foo::MMethodC::GetFilteredResources();
 	static_assert(std::is_same_v<std::decay_t<decltype(fooMethodC)>,
 	                             std::tuple<TSomeNumberWrite,
 	                                        TSomeStringWrite,
 	                                        TAnotherStringWrite>>);
 	static_assert( // CSomeNumber<EResourceAccessMode::WRITE>
-		std::get<0>(fooMethodC).ACCESS_MODE == Meta::EResourceAccessMode::WRITE
+		std::get<0>(fooMethodC).ACCESS_MODE == TMode::WRITE
 	);
+
+	// Check annotations
+	using TAnnotationOfFooMethodA = Meta::TAnnotation<^^CFoo::MethodA>;
+	using TAnnotationOfFooMethodB = Meta::TAnnotation<^^CFoo::MethodB>;
+	using TAnnotationOfFooMethodC = Meta::TAnnotation<^^CFoo::MethodC>;
+	using TAnnotationOfFooBarVirtualMethod = Meta::TAnnotation<^^IFooBar::VirtualMethod>;
+	static_assert(std::is_same_v<TAnnotationOfFooMethodA, CFoo::CMeta::TMethodA>);
+	static_assert(std::is_same_v<TAnnotationOfFooMethodB, CFoo::CMeta::TMethodB>);
+	static_assert(std::is_same_v<TAnnotationOfFooMethodC, CFoo::CMeta::TMethodC>);
+	static_assert(std::is_same_v<TAnnotationOfFooBarVirtualMethod, IFooBar::CMeta::TVirtualMethod>);
 
 	/***************
 	 * Runtime tests
@@ -140,7 +165,7 @@ int main()
 		std::cout << "Function A end\n";
 	};
 	// type std::tuple< struct Meta::Bar::CSomeString<0>, struct Meta::Foo::CNumber<1> >
-	using TTaskA = CTask<Meta::Foo::CReadSomeString>;
+	using TTaskA = CTask<Meta::Foo::MReadSomeString>;
 	auto taskA = std::make_shared<TTaskA>(std::move(funA));
 
 	// Task B
@@ -155,7 +180,7 @@ int main()
 		std::cout << "Function B end\n";
 	};
 	// type std::tuple< struct Meta::Bar::CSomeString<1>, struct Meta::Bar::CSomeNumber<1> >
-	using TTaskB = CTask<Meta::Bar::CMethod>;
+	using TTaskB = CTask<Meta::Bar::MMethod>;
 	auto taskB = std::make_shared<TTaskB>(std::move(funB));
 
 	// Task C
@@ -170,7 +195,7 @@ int main()
 		std::cout << "Function C end\n";
 	};
 	// type std::tuple< struct Meta::Bar::CAnotherString<1> >
-	using TTaskC = CTask<Meta::Bar::CSetAnotherString>;
+	using TTaskC = CTask<Meta::Bar::MSetAnotherString>;
 	auto taskC = std::make_shared<TTaskC>(std::move(funC));
 
 	// Task D
@@ -199,12 +224,12 @@ int main()
 		sleep_for(sleepDuration);
 		std::cout << "Function E end\n";
 	};
-	// type CMethodA std::tuple<struct Meta::Foo::CNumber<1>,struct Meta::Bar::CSomeNumber<1>,struct Meta::Bar::CSomeString<0> >
-	// type CMethodB std::tuple<struct Meta::Bar::CSomeNumber<1>,struct Meta::Bar::CSomeString<1> >
-	// type CMethodC std::tuple<struct Meta::Bar::CSomeNumber<1>,struct Meta::Bar::CSomeString<1>,struct Meta::Bar::CAnotherString<1> >
+	// type MMethodA std::tuple<struct Meta::Foo::CNumber<1>,struct Meta::Bar::CSomeNumber<1>,struct Meta::Bar::CSomeString<0> >
+	// type MMethodB std::tuple<struct Meta::Bar::CSomeNumber<1>,struct Meta::Bar::CSomeString<1> >
+	// type MMethodC std::tuple<struct Meta::Bar::CSomeNumber<1>,struct Meta::Bar::CSomeString<1>,struct Meta::Bar::CAnotherString<1> >
 
 	// type filtered std::tuple<struct Meta::Foo::CNumber<1>,struct Meta::Bar::CSomeNumber<1>,struct Meta::Bar::CSomeString<1>,struct Meta::Bar::CAnotherString<1> >
-	using TTaskE = CTask<Meta::Foo::CMethodA, Meta::Foo::CMethodB, Meta::Foo::CMethodC>;
+	using TTaskE = CTask<Meta::Foo::MMethodA, Meta::Foo::MMethodB, Meta::Foo::MMethodC>;
 	auto taskE = std::make_shared<TTaskE>(std::move(funE));
 
 	// Add tasks to our scheduler queue and task list
@@ -275,7 +300,8 @@ int main()
 		{
 			resources = task->GetMetaResource(idx);
 			typeInfo = resources.type();
-			std::cout << "\t" << (idx + 1) << ". check:\t" << typeInfo.name() << " (" << typeInfo.hash_code() << ")" << std::endl;
+			std::cout << "\t" << (idx + 1) << ". check:\t" << typeInfo.name() << " (" << typeInfo.hash_code() << ")" <<
+				std::endl;
 			TResourceVisitor::VisitAny(
 				resources,
 				[&]<typename T>(std::tuple<T> resource_tuple)
@@ -305,6 +331,13 @@ int main()
 	std::cout << "Executing tasks:" << std::endl;
 	CTaskScheduler taskScheduler{};
 	taskScheduler.OrderAndExecuteTasks(schedulerTaskQueue);
-
+	// Expected if we start with task A:
+	// 1. start A, C, D
+	// 2. end A, C
+	// 3. start B
+	// 4. end B
+	// 5. start E
+	// 6. end E
+	// 7. end D
 	return 0;
 }

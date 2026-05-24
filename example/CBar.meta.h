@@ -5,43 +5,36 @@
 
 namespace Meta::Bar
 {
-	/************
-	 * Methods
-	 ************/
+/************
+ * Methods
+ ************/
 
-	struct CPublicReadSomeNumber : CMethodResources<CBar::_meta::TSomeNumber<EResourceAccessMode::READ>>
-	{
-	};
+struct MPublicReadSomeNumber : CBar::CMeta::TPublicReadSomeNumber
+{};
 
-	struct CPublicWriteSomeNumber : CMethodResources<CBar::_meta::TSomeNumber<EResourceAccessMode::WRITE>>
-	{
-	};
+struct MPublicWriteSomeNumber : CBar::CMeta::TPublicWriteSomeNumber
+{};
 
-	struct CPublicReadSomeString : CMethodResources<CBar::_meta::TSomeString<EResourceAccessMode::READ>>
-	{
-	};
+struct MPublicReadSomeString : CBar::CMeta::TPublicReadSomeString
+{};
 
-	struct CPublicWriteSomeString : CMethodResources<CBar::_meta::TSomeString<EResourceAccessMode::WRITE>>
-	{
-	};
+struct MPublicWriteSomeString : CBar::CMeta::TPublicWriteSomeString
+{};
 
-	struct CMethod : CMethodResources<CBar::_meta::TSomeNumber<EResourceAccessMode::WRITE>,
-	                                  CBar::_meta::TSomeString<EResourceAccessMode::WRITE>>
-	{
-	};
+struct MMethod : CBar::CMeta::TMethod
+{};
 
-	struct CSetAnotherString : CMethodResources<CBar::_meta::TAnotherString<EResourceAccessMode::WRITE>>
-	{
-	};
+struct MSetAnotherString : CBar::CMeta::TSetAnotherString
+{};
 }
 
 namespace Meta
 {
-	// all:
-	using TBarResourcesList = TRegisterResources<GLOBAL_METHOD_RESOURCE_LIST,
-	                                             Bar::CPublicReadSomeNumber, Bar::CPublicWriteSomeNumber,
-	                                             Bar::CPublicReadSomeString, Bar::CPublicWriteSomeString,
-	                                             Bar::CMethod, Bar::CSetAnotherString>;
-	#undef GLOBAL_METHOD_RESOURCE_LIST
-	#define GLOBAL_METHOD_RESOURCE_LIST TBarResourcesList
+// all:
+using TBarResourcesList = TRegisterResources<GLOBAL_METHOD_RESOURCE_LIST,
+                                             Bar::MPublicReadSomeNumber, Bar::MPublicWriteSomeNumber,
+                                             Bar::MPublicReadSomeString, Bar::MPublicWriteSomeString,
+                                             Bar::MMethod, Bar::MSetAnotherString>;
+#undef GLOBAL_METHOD_RESOURCE_LIST
+#define GLOBAL_METHOD_RESOURCE_LIST TBarResourcesList
 }
