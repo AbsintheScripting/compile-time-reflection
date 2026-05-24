@@ -37,16 +37,15 @@ CFoo.h:
 ```cpp
 class CFoo
 {
+	std::string someString;
 public:
+	int someNumber = 0;
+
 	void Method()
 	{
 		someNumber = 1;      // write access someNumber
 		someString = "Test"; // write access someString
 	}
-
-	int someNumber = 0;
-private:
-	std::string someString;
 };
 ```
 
@@ -70,45 +69,30 @@ CFoo.h:
 ```cpp
 class CFoo
 {
-public:
-	void Method();
-
-	int someNumber = 0;
-private:
 	std::string someString;
-
 public:
-	struct _meta
+	int someNumber = 0;
+
+	struct CMeta
 	{
-		template <Meta::EResourceAccessMode Mode>
-		using TSomeNumber = Meta::CResourceAccess<^^CBar::someNumber, Mode>;
-		template <Meta::EResourceAccessMode Mode>
+		using TMode = Meta::EResourceAccessMode;
+		// Resource definitions
+		template <TMode Mode>
 		using TSomeString = Meta::CResourceAccess<^^CBar::someString, Mode>;
+		template <TMode Mode>
+		using TSomeNumber = Meta::CResourceAccess<^^CBar::someNumber, Mode>;
+		// Method definitions
+		using TMethod = Meta::CMethodResources<TSomeNumber<TMode::WRITE>,
+		                                       TSomeString<TMode::WRITE>>;
 	};
+
+	[[=CMeta::TMethod{}]]
+	void Method()
+	{
+		someNumber = 1;      // write access someNumber
+		someString = "Test"; // write access someString
+	}
 };
-```
-
-CFoo.meta.h:
-```cpp
-namespace Meta::Foo
-{
-	struct CPublicReadSomeNumber : CMethodResources<CFoo::_meta::TSomeNumber<EResourceAccessMode::READ>>{};
-	struct CPublicWriteSomeNumber : CMethodResources<CFoo::_meta::TSomeNumber<EResourceAccessMode::WRITE>>{};
-
-	struct CMethod : CMethodResources<CFoo::_meta::TSomeNumber<EResourceAccessMode::WRITE>,
-	                                  CFoo::_meta::TSomeString<EResourceAccessMode::WRITE>>{};
-}
-
-namespace Meta
-{
-	// append all defined method resources to the global list:
-	using TFooResourcesList = TRegisterResources<GLOBAL_METHOD_RESOURCE_LIST,
-	                                             Foo::CPublicReadSomeNumber,
-	                                             Foo::CPublicWriteSomeNumber,
-	                                             Foo::CMethod>;
-	#undef GLOBAL_METHOD_RESOURCE_LIST
-	#define GLOBAL_METHOD_RESOURCE_LIST TFooResourcesList
-}
 ```
 
 CBar.h:
@@ -116,159 +100,27 @@ CBar.h:
 class CBar
 {
 public:
-	void MethodCallingMethod(CFoo& foo);
-}
-```
-
-CBar.meta.h:
-```cpp
-namespace Meta::Bar
-{
-	// methods:
-	struct CMethodCallingMethod : CMethodResources<Foo::CMethod,
-	                                               Foo::CPublicReadSomeNumber> {};
-}
-
-namespace Meta
-{
-	// append all defined method resources to the global list:
-	using TBarResourcesList = TRegisterResources<GLOBAL_METHOD_RESOURCE_LIST, Bar::CMethodCallingMethod>;
-	#undef GLOBAL_METHOD_RESOURCE_LIST
-	#define GLOBAL_METHOD_RESOURCE_LIST TBarResourcesList
-}
-```
-
-With the trick of undefining and redefining the macro `GLOBAL_METHOD_RESOURCE_LIST`,
-we can gather all resources in a neat type list used by the resource-visitor for lookups.
-We just need to include all meta headers in one resource list header and alias it.
-
-MetaResourceList.h:
-```cpp
-// include all meta resource headers here
-#include "CBar.meta.h"
-#include "CFoo.meta.h"
-
-namespace Meta
-{
-	using TGlobalResourceList = GLOBAL_METHOD_RESOURCE_LIST::TMethodResources;
-}
-```
-
-Let's define our tasks and declare used resources.
-Then move the task queue into the scheduler to order and start the tasks.
-
-main.cpp:
-```cpp
-int main()
-{
-	// Create our test objects
-	const auto myFoo = std::make_unique<CFoo>();
-	const auto myBar = std::make_unique<CBar>();
-
-	// Create some tasks
-
-	// Task A
-	// Write accesses: Foo::someNumber, Foo::someString
-	// Read accesses: none
-	std::function funA = [&]()
+	struct CMeta
 	{
-		std::cout << "Execute function A\n";
-		myFoo->Method();
-		std::cout << "Function A end\n";
-	};
-	// declare used methods and resources
-	using TTaskA = CTask<Meta::Foo::CMethod>;
-	auto taskA = std::make_shared<TTaskA>(std::move(funA));
-
-	// Task B
-	// Write accesses: Foo::someNumber, Foo::someString
-	// Read accesses: Foo::someString
-	std::function funB = [&]()
-	{
-		std::cout << "Execute function B\n";
-		myBar->MethodCallingMethod(*myFoo);
-		std::cout << "Function B end\n";
-	};
-	// declare used methods and resources
-	using TTaskB = CTask<Meta::Bar::CMethod>;
-	auto taskB = std::make_shared<TTaskB>(std::move(funB));
-
-	// Add tasks to our scheduler queue
-	// Conflicts: taskA and taskB, because funA wants to write Foo::someNumber and Foo::someString while funB tries the same
-	std::queue<std::shared_ptr<ITask>> schedulerTaskQueue;
-	schedulerTaskQueue.push(taskA);
-	schedulerTaskQueue.push(taskB);
-
-	// Schedule tasks and execute them
-	// Task A and B execution shall not overlap, since they have a conflicting resource
-	std::cout << "Executing tasks:" << std::endl;
-	CTaskScheduler taskScheduler{};
-	taskScheduler.OrderAndExecuteTasks(schedulerTaskQueue);
-
-	return 0;
-}
-```
-
-Let's have a look inside the task scheduler and see the resource-visitor in action:
-```cpp
-using TResourceVisitor = Meta::CResourceVisitor<Meta::TGlobalResourceList>;
-
-void CTaskScheduler::OrderAndExecuteTasks(std::queue<std::shared_ptr<ITask>> task_queue)
-{
-	// build task flow with entt
-	entt::flow builder{};
-
-	std::vector<std::shared_ptr<ITask>> taskList;
-	taskList.reserve(task_queue.size());
-
-	// lambda for std::apply
-	auto registerResources = [&]<Meta::member_resource_access... Ts>(const Ts&... tuple_args)
-	{
-		((tuple_args.ACCESS_MODE == Meta::EResourceAccessMode::WRITE
-			  ? builder.rw(tuple_args.GetHashCode()) // declares the resource as read-write access
-			  : builder.ro(tuple_args.GetHashCode())) // declares the resource as read-only access
-			, ...);
+		using TMode = Meta::EResourceAccessMode;
+		// Method definitions
+		using TMethodCallingMethod = Meta::CMethodResources<CFoo::CMeta::TMethod,
+		                                                    CFoo::CMeta::TSomeNumber<TMode::READ>>;
 	};
 
-	while (!task_queue.empty())
+	[[=CMeta::TMethodCallingMethod{}]]
+	void MethodCallingMethod(CFoo& foo)
 	{
-		taskList.push_back(std::move(task_queue.front()));
-		task_queue.pop();
-
-		auto taskId = reinterpret_cast<entt::id_type>(
-			static_cast<void*>(taskList.back().get()) // <- use pointer as uid
-		);
-		builder.bind(taskId); // registers the task
-
-		// since we get our resources only as std::any,
-		// we need to use the visitor pattern to retrieve the original std::tuple
-		std::any taskResources = taskList.back()->GetResources();
-		// The VisitAny method takes our std::any and a lambda to call with it, if it finds the resource
-		TResourceVisitor::VisitAny(
-			taskResources,
-			[&]<typename T>(std::tuple<T> resources_tuple)
-			{
-				if constexpr (Meta::method_resources<T>)
-				{
-					// we receive a filtered resource list as std::tuple,
-					// if we have declared for example Foo::someString as read and as write access,
-					// we only get it as write access, because that is higher prioritized,
-					// since only task is allowed to do this operation at a time
-					constexpr auto filteredResources = T::GetFilteredResources();
-					// calls our lambda for all filtered resources that registers the resources for this task
-					std::apply(registerResources, filteredResources);
-				}
-			}
-		);
+		foo.Method();                                  // inherit resources from CFoo::Method
+		std::cout << "Foo number: " << foo.someNumber; // read access to public someNumber
 	}
-
-[...]
+}
 ```
 
-Then we build our execution graph based on the entt::flow builder,
-enabling task execution without collisions.
+Now with a scheduler, which can consume the meta data annotated on the class methods,
+we can build an execution graph (like with the `entt::flow` builder) and enable task execution without collisions.
 See the [example](example/) folder for a more detailed and complete example.
-If you want to build the example, remember to pull the entt submodule.
+If you want to build the example, remember to pull also the entt submodule.
 
 ## Annotations
 This project uses my open-source [C++ code style](https://gist.github.com/AbsintheScripting/4f2be73c91fc49fc6bc2cefbb2a52895).
