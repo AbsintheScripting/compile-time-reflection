@@ -129,6 +129,27 @@ int main()
 		std::get<0>(fooMethodC).ACCESS_MODE == TMode::WRITE
 	);
 
+	// Use Meta helper method to check resources
+	static_assert(
+		Meta::is_same_method_resources(CFoo::CMeta::TMethodA{},
+		                               Meta::CMethodResources<CFoo::CMeta::TNumber<TMode::WRITE>,
+		                                                      TSomeNumberWrite,
+		                                                      TSomeStringRead>{})
+	);
+	// different orders
+	static_assert(
+		Meta::is_same_method_resources(CFoo::CMeta::TMethodA{},
+		                               Meta::CMethodResources<TSomeNumberWrite,
+		                                                      CFoo::CMeta::TNumber<TMode::WRITE>,
+		                                                      TSomeStringRead>{})
+	);
+	static_assert(
+		Meta::is_same_method_resources(CFoo::CMeta::TMethodA{},
+		                               Meta::CMethodResources<TSomeNumberWrite,
+		                                                      TSomeStringRead,
+		                                                      CFoo::CMeta::TNumber<TMode::WRITE>>{})
+	);
+
 	// Check annotations
 	using TAnnotationOfFooMethodA = Meta::TAnnotation<^^CFoo::MethodA>;
 	using TAnnotationOfFooMethodB = Meta::TAnnotation<^^CFoo::MethodB>;

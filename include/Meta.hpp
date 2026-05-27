@@ -360,4 +360,48 @@ namespace Meta
 	 */
 	template <std::meta::info Method>
 	using TAnnotation = typename [:method_resources_type_of<Method>():];
+
+	/*
+	* ####################################
+	* helper methods
+	* ####################################
+	*/
+
+	template<typename T, typename Tuple>
+	struct CTupleContains;
+
+	template<typename T, typename... Ts>
+	struct CTupleContains<T, std::tuple<Ts...>>
+		: std::bool_constant<(std::same_as<T, Ts> || ...)> {};
+
+	template <typename LeftTuple, typename RightTuple>
+	struct CTupleSameTypes;
+
+	template <typename... Lefts, typename... Rights>
+	struct CTupleSameTypes<std::tuple<Lefts...>, std::tuple<Rights...>>
+	{
+		static constexpr bool bValue =
+			(CTupleContains<Lefts, std::tuple<Rights...>>::value && ...) &&
+			(CTupleContains<Rights, std::tuple<Lefts...>>::value && ...);
+	};
+
+	/**
+	* \brief Checks if the filtered resources of two CMethodResources specialisations
+	*        are strictly the same (both directions).
+	* \tparam ResourcesLeft Resources of CMethodResources Left
+	* \tparam ResourcesRight Resources of CMethodResources Right
+	*/
+	template <typename... ResourcesLeft, typename... ResourcesRight>
+	consteval bool is_same_method_resources(
+	CMethodResources<ResourcesLeft...>,
+	CMethodResources<ResourcesRight...>)
+	{
+		using LeftTuple =
+			decltype(CMethodResources<ResourcesLeft...>::GetFilteredResources());
+
+		using RightTuple =
+			decltype(CMethodResources<ResourcesRight...>::GetFilteredResources());
+
+		return CTupleSameTypes<LeftTuple, RightTuple>::bValue;
+	}
 }
