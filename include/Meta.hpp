@@ -39,33 +39,53 @@ namespace Meta
 		// the mode is handled separately via builder.rw() / builder.ro().
 		static consteval size_t ComputeHash()
 		{
-			constexpr std::string_view cls  = std::meta::identifier_of(std::meta::parent_of(Member));
+			constexpr std::string_view cls = std::meta::identifier_of(std::meta::parent_of(Member));
 			constexpr std::string_view name = std::meta::identifier_of(Member);
 			size_t h = 14695981039346656037ULL;
-			for (const char c : cls)  { h ^= static_cast<unsigned char>(c); h *= 1099511628211ULL; }
-			h ^= ':'; h *= 1099511628211ULL;
-			h ^= ':'; h *= 1099511628211ULL;
-			for (const char c : name) { h ^= static_cast<unsigned char>(c); h *= 1099511628211ULL; }
+			for (const char c : cls)
+			{
+				h ^= static_cast<unsigned char>(c);
+				h *= 1099511628211ULL;
+			}
+			h ^= ':';
+			h *= 1099511628211ULL;
+			h ^= ':';
+			h *= 1099511628211ULL;
+			for (const char c : name)
+			{
+				h ^= static_cast<unsigned char>(c);
+				h *= 1099511628211ULL;
+			}
 			return h;
 		}
 
 		static constexpr size_t HASH = ComputeHash();
-		static constexpr size_t GetHashCode() { return HASH; }
+
+		static constexpr size_t GetHashCode()
+		{
+			return HASH;
+		}
 	};
 
 	// Sentinel for tasks that access no resources
-	struct CNoType { int noResource; };
+	struct CNoType
+	{
+		int noResource;
+	};
+
 	template <EResourceAccessMode AccessMode>
-	struct CNoResource : CResourceAccess<^^CNoType::noResource, AccessMode>{};
+	struct CNoResource : CResourceAccess<^^CNoType::noResource, AccessMode>
+	{};
 
 	/**
 	 * \brief Concept to check if we have the structure of CResourceAccess.
 	 * \tparam T The type to check
 	 */
 	template <typename T>
-	concept resource_access = requires {
-		{ T::MEMBER_INFO }   -> std::convertible_to<std::meta::info>;
-		{ T::ACCESS_MODE }   -> std::convertible_to<EResourceAccessMode>;
+	concept resource_access = requires
+	{
+		{ T::MEMBER_INFO } -> std::convertible_to<std::meta::info>;
+		{ T::ACCESS_MODE } -> std::convertible_to<EResourceAccessMode>;
 		{ T::GetHashCode() } -> std::convertible_to<size_t>;
 	};
 
@@ -213,6 +233,10 @@ namespace Meta
 	template <resource_access... Ts>
 	using TResourceTypes = typename CResourceTypeList<std::tuple<Ts...>, Ts...>::TFilter;
 
+	// helper for failed asserts, compiler prints type T
+	template <typename T>
+	inline constexpr bool bAlwaysFalse = false;
+
 	/*
 	 * ####################################
 	 * resource definition for a method
@@ -245,7 +269,7 @@ namespace Meta
 			else if constexpr (is_method_resource<Resource>)
 				return Resource::GetResources();
 			else
-				static_assert(false, "Invalid resource type provided");
+				static_assert(bAlwaysFalse<Resource>, "Invalid resource type provided");
 		}
 
 		/**
@@ -313,7 +337,8 @@ namespace Meta
 	/**
 	 * \brief In case you access no resources in your task (empty type list).
 	 */
-	struct CNoResources : CMethodResources<CNoResource<EResourceAccessMode::READ>>{};
+	struct CNoResources : CMethodResources<CNoResource<EResourceAccessMode::READ>>
+	{};
 
 	// GlobalMethodResourcesList initialized with a MethodResourcesList holding the CNoResources sentinel
 	using TGlobalMethodResourcesList = CMethodResourcesList<CNoResources>;
@@ -367,12 +392,33 @@ namespace Meta
 	* ####################################
 	*/
 
-	template<typename T, typename Tuple>
+	template <typename T, typename Tuple>
 	struct CTupleContains;
 
-	template<typename T, typename... Ts>
+	template <typename T, typename... Ts>
 	struct CTupleContains<T, std::tuple<Ts...>>
-		: std::bool_constant<(std::same_as<T, Ts> || ...)> {};
+		: std::bool_constant<(std::same_as<T, Ts> || ...)>
+	{};
+
+	template <typename T, typename Tuple>
+	consteval void CheckExistsInRight()
+	{
+		if constexpr (!CTupleContains<T, Tuple>::value)
+		{
+			static_assert(bAlwaysFalse<T>,
+			              "Resource exists in left resource list but not in right resource list");
+		}
+	}
+
+	template <typename T, typename Tuple>
+	consteval void CheckExistsInLeft()
+	{
+		if constexpr (!CTupleContains<T, Tuple>::value)
+		{
+			static_assert(bAlwaysFalse<T>,
+			              "Resource exists in right resource list but not in left resource list");
+		}
+	}
 
 	template <typename LeftTuple, typename RightTuple>
 	struct CTupleSameTypes;
@@ -380,21 +426,27 @@ namespace Meta
 	template <typename... Lefts, typename... Rights>
 	struct CTupleSameTypes<std::tuple<Lefts...>, std::tuple<Rights...>>
 	{
-		static constexpr bool bValue =
-			(CTupleContains<Lefts, std::tuple<Rights...>>::value && ...) &&
-			(CTupleContains<Rights, std::tuple<Lefts...>>::value && ...);
+		static consteval bool Check()
+		{
+			(CheckExistsInRight<Lefts, std::tuple<Rights...>>(), ...);
+			(CheckExistsInLeft<Rights, std::tuple<Lefts...>>(), ...);
+
+			return true;
+		}
+
+		static constexpr bool bValue = Check();
 	};
 
 	/**
-	* \brief Checks if the filtered resources of two CMethodResources specialisations
-	*        are strictly the same (both directions).
-	* \tparam ResourcesLeft Resources of CMethodResources Left
-	* \tparam ResourcesRight Resources of CMethodResources Right
-	*/
+	 * \brief Checks if the filtered resources of two CMethodResources specialisations
+	 *        are strictly the same (both directions).
+	 * \tparam ResourcesLeft Resources of CMethodResources Left
+	 * \tparam ResourcesRight Resources of CMethodResources Right
+	 */
 	template <typename... ResourcesLeft, typename... ResourcesRight>
 	consteval bool is_same_method_resources(
-	CMethodResources<ResourcesLeft...>,
-	CMethodResources<ResourcesRight...>)
+		CMethodResources<ResourcesLeft...>,
+		CMethodResources<ResourcesRight...>)
 	{
 		using LeftTuple =
 			decltype(CMethodResources<ResourcesLeft...>::GetFilteredResources());
