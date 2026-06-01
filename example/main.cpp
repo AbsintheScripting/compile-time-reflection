@@ -18,9 +18,8 @@
 #include <tuple>
 #include <vector>
 
-#include "CTaskScheduler.h"
 #include "MetaResourceList.h"
-#include "Task.hpp"
+#include "MetaTask.hpp"
 
 int main()
 {
@@ -34,8 +33,8 @@ int main()
 	static_assert(std::is_same_v<typename [:std::meta::type_of(CFoo::CMeta::TNumber<TMode::READ>::MEMBER_INFO):], int>);
 	static_assert(std::meta::identifier_of(CFoo::CMeta::TNumber<TMode::READ>::MEMBER_INFO) == std::string_view("number"));
 	static_assert(std::is_same_v<typename [:std::meta::type_of(CBar::CMeta::TSomeNumber<TMode::READ>::MEMBER_INFO):], int>);
-	static_assert(std::is_same_v<typename [:std::meta::type_of(CBar::CMeta::TSomeString<TMode::READ>::MEMBER_INFO):], std::string>);
-	static_assert(std::is_same_v<typename [:std::meta::type_of(CBar::CMeta::TAnotherString<TMode::READ>::MEMBER_INFO):], std::string>);
+	static_assert(std::is_same_v<typename [:std::meta::type_of(CBar::CMeta::TSomeString<TMode::READ>::MEMBER_INFO):],std::string>);
+	static_assert(std::is_same_v<typename [:std::meta::type_of(CBar::CMeta::TAnotherString<TMode::READ>::MEMBER_INFO):],std::string>);
 	static_assert(
 		std::meta::identifier_of(CBar::CMeta::TAnotherString<TMode::READ>::MEMBER_INFO)
 		== std::string_view("anotherString")
@@ -160,6 +159,17 @@ int main()
 	static_assert(std::is_same_v<TAnnotationOfFooMethodC, CFoo::CMeta::TMethodC>);
 	static_assert(std::is_same_v<TAnnotationOfFooBarVirtualMethod, IFooBar::CMeta::TVirtualMethod>);
 
+	// Compile-time conflict checks against the example tasks (A/B/C/D/E).
+	static_assert(Meta::methods_conflict<Meta::Foo::MReadSomeString, Meta::Bar::MMethod>()); // A vs B
+	static_assert(!Meta::methods_conflict<Meta::Foo::MReadSomeString, Meta::Bar::MSetAnotherString>()); // A vs C
+	static_assert(!Meta::methods_conflict<Meta::Bar::MMethod, Meta::Bar::MSetAnotherString>()); // B vs C
+	static_assert(!Meta::methods_conflict<Meta::CNoResources, Meta::Foo::MReadSomeString>()); // D vs A
+	static_assert(Meta::methods_conflict<Meta::Foo::MMethodA, Meta::Foo::MReadSomeString>()); // E (Foo::number) vs A
+	static_assert(Meta::methods_conflict<Meta::Foo::MMethodA, Meta::Bar::MMethod>()); // E vs B
+	static_assert(Meta::methods_conflict<Meta::Foo::MMethodC, Meta::Bar::MSetAnotherString>()); // E vs C
+	// CNoResources never conflicts with anything, including itself
+	static_assert(!Meta::methods_conflict<Meta::CNoResources, Meta::CNoResources>());
+
 	/***************
 	 * Runtime tests
 	 ***************/
@@ -186,7 +196,7 @@ int main()
 		std::cout << "Function A end\n";
 	};
 	// type std::tuple< struct Meta::Bar::CSomeString<0>, struct Meta::Foo::CNumber<1> >
-	using TTaskA = CTask<Meta::Foo::MReadSomeString>;
+	using TTaskA = Meta::CTask<Meta::Foo::MReadSomeString>;
 	auto taskA = std::make_shared<TTaskA>(std::move(funA));
 
 	// Task B
@@ -201,7 +211,7 @@ int main()
 		std::cout << "Function B end\n";
 	};
 	// type std::tuple< struct Meta::Bar::CSomeString<1>, struct Meta::Bar::CSomeNumber<1> >
-	using TTaskB = CTask<Meta::Bar::MMethod>;
+	using TTaskB = Meta::CTask<Meta::Bar::MMethod>;
 	auto taskB = std::make_shared<TTaskB>(std::move(funB));
 
 	// Task C
@@ -216,7 +226,7 @@ int main()
 		std::cout << "Function C end\n";
 	};
 	// type std::tuple< struct Meta::Bar::CAnotherString<1> >
-	using TTaskC = CTask<Meta::Bar::MSetAnotherString>;
+	using TTaskC = Meta::CTask<Meta::Bar::MSetAnotherString>;
 	auto taskC = std::make_shared<TTaskC>(std::move(funC));
 
 	// Task D
@@ -229,11 +239,11 @@ int main()
 		std::cout << "Function D end\n";
 	};
 	// type std::tuple< struct Meta::CNoResource<0> >
-	using TTaskD = CTask<Meta::CNoResources>;
+	using TTaskD = Meta::CTask<Meta::CNoResources>;
 	auto taskD = std::make_shared<TTaskD>(std::move(funD));
 
 	// Task E
-	// Write accesses: none
+	// Write accesses: Foo::number, Bar::someNumber, Bar::anotherString, Bar::someString
 	// Read accesses: none
 	std::function funE = [&]()
 	{
@@ -245,23 +255,24 @@ int main()
 		sleep_for(sleepDuration);
 		std::cout << "Function E end\n";
 	};
-	// type MMethodA std::tuple<struct Meta::Foo::CNumber<1>,struct Meta::Bar::CSomeNumber<1>,struct Meta::Bar::CSomeString<0> >
-	// type MMethodB std::tuple<struct Meta::Bar::CSomeNumber<1>,struct Meta::Bar::CSomeString<1> >
-	// type MMethodC std::tuple<struct Meta::Bar::CSomeNumber<1>,struct Meta::Bar::CSomeString<1>,struct Meta::Bar::CAnotherString<1> >
 
 	// type filtered std::tuple<struct Meta::Foo::CNumber<1>,struct Meta::Bar::CSomeNumber<1>,struct Meta::Bar::CSomeString<1>,struct Meta::Bar::CAnotherString<1> >
-	using TTaskE = CTask<Meta::Foo::MMethodA, Meta::Foo::MMethodB, Meta::Foo::MMethodC>;
+	using TTaskE = Meta::CTask<Meta::Foo::MMethodA, Meta::Foo::MMethodB, Meta::Foo::MMethodC>;
 	auto taskE = std::make_shared<TTaskE>(std::move(funE));
 
 	// Add tasks to our scheduler queue and task list
-	// Conflicts: taskA and taskB, because funA wants to read Bar::someString while funB tries to write it
-	std::queue<std::shared_ptr<ITask>> schedulerTaskQueue;
+	// Conflicts:
+	//   - taskA and taskB, because funA wants to read Bar::someString while funB tries to write it
+	//   - taskE has conflicts with taskA, taskB and taskC, with write access to:
+	//       Foo::number, Bar::someNumber, Bar::anotherString, Bar::someString
+	//   - Task D has no conflicts and can run in parallel with all tasks
+	std::queue<std::shared_ptr<Meta::ITask>> schedulerTaskQueue;
 	schedulerTaskQueue.push(taskA);
 	schedulerTaskQueue.push(taskB);
 	schedulerTaskQueue.push(taskC);
 	schedulerTaskQueue.push(taskD);
 	schedulerTaskQueue.push(taskE);
-	std::vector<std::shared_ptr<ITask>> tasks;
+	std::vector<std::shared_ptr<Meta::ITask>> tasks;
 	tasks.push_back(taskA);
 	tasks.push_back(taskB);
 	tasks.push_back(taskC);
@@ -344,14 +355,19 @@ int main()
 		}
 	}
 
-	// Schedule tasks and execute them
+	// Schedule tasks
 	// Task A and B execution shall not overlap, since they have a conflicting resource
 	// Task E has conflicts with A, B and C
 	// Task D has no conflicts and can run in parallel with all tasks
+	const std::span<const std::shared_ptr<Meta::ITask>> tasksSpan{tasks};
+	const Meta::TSchedule schedule = Meta::CScheduler::Schedule(tasksSpan);
+	// Now execute the schedule
 	std::cout << "" << std::endl;
 	std::cout << "Executing tasks:" << std::endl;
-	CTaskScheduler taskScheduler{};
-	taskScheduler.OrderAndExecuteTasks(schedulerTaskQueue);
+	Meta::CScheduler::Execute(schedule, tasksSpan, []
+	{
+		return true;
+	});
 	// Expected if we start with task A:
 	// 1. start A, C, D
 	// 2. end A, C
@@ -360,5 +376,161 @@ int main()
 	// 5. start E
 	// 6. end E
 	// 7. end D
+
+	/***********************
+	 * Priority demonstration
+	 ***********************/
+
+	// Pretty-printer for a Meta::TSchedule.
+	// For each scheduled position it shows the user-visible label of the task running in that slot,
+	// its priority, and the indices of the slots it has to wait for (its parents in the dependency DAG).
+	auto printSchedule = [](const char* label,
+	                        const Meta::TSchedule& scheduled_tasks,
+	                        std::span<const std::shared_ptr<Meta::ITask>> tasks_span,
+	                        const std::vector<const char*>& labels)
+	{
+		std::cout << '\n' << label << " schedule (priority desc):\n";
+		// scheduleIdx walks the output order (already topologically sorted,
+		// because the scheduler emits parents before children by construction).
+		for (size_t scheduleIdx = 0; scheduleIdx < scheduled_tasks.size(); ++scheduleIdx)
+		{
+			// inputIndex maps back to the caller's tasks vector;
+			// parents are indices into THIS schedule, not the input.
+			const auto& [taskIndex, parents] = scheduled_tasks[scheduleIdx];
+			std::cout << "  [" << scheduleIdx << "] " << labels[taskIndex]
+				<< " (prio=" << tasks_span[taskIndex]->GetPriority() << ")"
+				<< " parents={";
+			// Comma-separate the parent indices.
+			for (size_t parent = 0; parent < parents.size(); ++parent)
+			{
+				if (parent)
+					std::cout << ", ";
+				std::cout << parents[parent];
+			}
+			std::cout << "}\n";
+		}
+	};
+
+	// Sanity print for the original A/B/C/D/E case. All five tasks share the default (lowest) priority,
+	// so the schedule order matches submission order;
+	// the interesting part is the parent links derived from the compile-time conflict matrix.
+	{
+		std::vector<std::shared_ptr<Meta::ITask>> abcde = {taskA, taskB, taskC, taskD, taskE};
+		std::vector<const char*> labels = {"A", "B", "C", "D", "E"};
+		std::span<const std::shared_ptr<Meta::ITask>> view{abcde};
+		// Build the schedule once and print it;
+		// the actual execution of this case already happened above through Meta::CTaskScheduler.
+		const auto sched = Meta::CScheduler::Schedule(view);
+		printSchedule("A/B/C/D/E", sched, view, labels);
+	}
+
+	// Scenario 1: two tasks with different priorities AND disjoint resources.
+	// The high-priority task touches Bar::anotherString only;
+	// the low-priority task touches Bar::someString (read) and Foo::number (write).
+	// Since the member sets do not overlap, the bitset conflict check returns false
+	// and neither task accumulates a parent in the schedule. The expected outcome is that both tasks
+	// launch in parallel even though one is much higher priority;
+	// priority controls ORDERING in the schedule, not artificial barriers between unrelated tasks.
+	{
+		std::cout << "\nScenario 1: non-conflicting low-prio + high-prio -> parents empty\n";
+
+		// Low-priority task: simulates a routine read-only synchronisation.
+		// Annotation Meta::Foo::MReadSomeString -> reads Bar::someString, writes Foo::number.
+		auto lowPrio = std::make_shared<Meta::CTask<Meta::Foo::MReadSomeString>>(
+			[]
+			{
+				std::cout << "low-prio (read someString) running\n";
+			},
+			Meta::EPriority::Low);
+
+		// High-priority task: simulates "set another string" -- a write to Bar::anotherString and nothing else.
+		auto highPrio = std::make_shared<Meta::CTask<Meta::Bar::MSetAnotherString>>(
+			[]
+			{
+				std::cout << "high-prio (write anotherString) running\n";
+			},
+			Meta::EPriority::High);
+
+		// Pack both tasks into a span the scheduler can read.
+		// Using a vector of shared_ptr matches what the example app uses elsewhere;
+		// the scheduler is templated on the pointer type and works just as well with raw ITask*
+		std::vector<std::shared_ptr<Meta::ITask>> arr = {lowPrio, highPrio};
+		std::vector<const char*> labels = {"low/readSomeString", "high/writeAnotherString"};
+		std::span<const std::shared_ptr<Meta::ITask>> view{arr};
+
+		// Build the schedule.
+		// Internally: stable-sort by priority desc (highPrio first because 900 > 100),
+		// then for each task scan the already-emitted entries for bitset overlap.
+		// There is none here, so both end up with empty parent lists.
+		const auto sched = Meta::CScheduler::Schedule(view);
+		printSchedule("Scenario 1", sched, view, labels);
+
+		// Self-check: the whole point of this scenario is
+		// that the low-prio task does NOT accumulate the high-prio task as a parent.
+		bool ok = sched.size() == 2
+			&& sched[0].parents.empty()
+			&& sched[1].parents.empty();
+		std::cout << "  -> both independent: " << (ok ? "PASS" : "FAIL") << '\n';
+
+		// Execute the schedule. With empty parent lists, both worker lambdas skip the parent-wait loop
+		// and call DoTask() immediately on separate threads. The two "running" lines may print in either order.
+		Meta::CScheduler::Execute(sched, view, []
+		{
+			return true;
+		});
+	}
+
+	// Scenario 2: two tasks where the resource sets DO overlap on a member (Bar::someString)
+	// and at least one side writes. The high-priority task writes someString; the low-priority task reads it.
+	// That's a read-write conflict, so the scheduler must serialise them.
+	// Because the high-prio task is sorted first, it ends up at schedule index 0 with no parents,
+	// and the low-prio task ends up at index 1 with parents = {0}. This shows how priority and conflict combine:
+	// priority breaks the tie about who runs first, conflict tells the scheduler that they cannot overlap.
+	{
+		std::cout << "\nScenario 2: conflicting low-prio + high-prio -> low waits for high\n";
+
+		// Low-priority task: reads Bar::someString (annotation MReadSomeString).
+		auto lowPrio = std::make_shared<Meta::CTask<Meta::Foo::MReadSomeString>>(
+			[]
+			{
+				std::cout << "low-prio (read someString) running\n";
+			},
+			Meta::EPriority::Low);
+
+		// High-priority task: writes Bar::someString (annotation MMethod also writes Bar::someNumber,
+		// but only the someString overlap matters here).
+		auto highPrio = std::make_shared<Meta::CTask<Meta::Bar::MMethod>>(
+			[]
+			{
+				std::cout << "high-prio (write someString) running\n";
+			},
+			Meta::EPriority::High);
+
+		// Same wiring as Scenario 1; only the resource overlap differs.
+		std::vector<std::shared_ptr<Meta::ITask>> arr = {lowPrio, highPrio};
+		std::vector<const char*> labels = {"low/readSomeString", "high/writeSomeString"};
+		std::span<const std::shared_ptr<Meta::ITask>> view{arr};
+		const auto sched = Meta::CScheduler::Schedule(view);
+		printSchedule("Scenario 2", sched, view, labels);
+
+		// Self-check: high must land at output index 0 (it was sorted first by priority),
+		// low at index 1, and low's parent list must contain exactly the high-prio slot (index 0).
+		// The high-prio slot itself has no parents because nothing was emitted before it.
+		bool ok = sched.size() == 2
+			&& sched[0].inputIndex == 1
+			&& sched[0].parents.empty()
+			&& sched[1].inputIndex == 0
+			&& sched[1].parents.size() == 1
+			&& sched[1].parents[0] == 0;
+		std::cout << "  -> high-first, low parent={high}: " << (ok ? "PASS" : "FAIL") << '\n';
+
+		// Execute. The low-prio worker waits on the high-prio future before calling DoTask(),
+		// so the two "running" lines appear in fixed order: high first, then low.
+		Meta::CScheduler::Execute(sched, view, []
+		{
+			return true;
+		});
+	}
+
 	return 0;
 }
