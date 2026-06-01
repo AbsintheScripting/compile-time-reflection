@@ -1,4 +1,9 @@
-# Compile-Time Reflection System for Resource Management
+# Compile-Time Resource Management System and Task Scheduler
+Annotate read/write access on class members.
+C++26 reflection turns those annotations into a compile-time conflict matrix.
+The scheduler uses it to build a per-tick dependency list in O(n² / 64) bitset operations,
+so your multi-threaded task bodies need no locks and run safely without conflicts and max speed.
+
 [![C++26](https://img.shields.io/badge/dialect-C%2B%2B26-blue)](https://en.cppreference.com/w/cpp/26)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
