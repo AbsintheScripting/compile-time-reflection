@@ -1,14 +1,15 @@
-# Compile-Time Resource Management System and Task Scheduler
-Annotate read/write access on class members.
-C++26 reflection turns those annotations into a compile-time conflict matrix.
-The scheduler uses it to build a per-tick dependency list in O(n² / 64) bitset operations,
-so your multi-threaded system doesn't need locks and executes tasks safely in parallel without conflicts.
-
+# MetaFlow
 [![C++26](https://img.shields.io/badge/dialect-C%2B%2B26-blue)](https://en.cppreference.com/w/cpp/26)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
+### A Compile-Time Resource Management System and Task Scheduler
+
 This project provides a header-only solution for a compile-time reflection system designed for resource management,
-together with a matching task scheduler that uses the reflected information to order parallel work without conflicts.
+together with a matching task scheduler that uses the reflected information to order parallel work without conflicts.  
+You annotate read/write access on class members,
+and C++26 reflection turns those annotations into a compile-time conflict matrix.
+The scheduler uses it to build a per-tick dependency list in O(n² / 64) bitset operations,
+so your multi-threaded system doesn't need locks and executes tasks safely in parallel without conflicts.  
 Both the resource description (`Meta.hpp`) and the scheduler (`MetaScheduler.hpp`)
 are pure C++26 with no third-party dependencies.
 A complete example combining everything is available in the [examples](example/) folder.
