@@ -2,6 +2,13 @@
 [![C++20](https://img.shields.io/badge/dialect-C%2B%2B20-blue)](https://en.cppreference.com/w/cpp/20)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
+### This repository is no longer actively developed, but remains fully usable for C++20 and C++23 projects.
+### For the latest evolution of this idea, see [MetaFlow](https://github.com/AbsintheScripting/MetaFlow).
+MetaFlow is based on this repository, is written in C++26, adds a task-scheduler
+and makes resource declaration way easier and less boilerplatey with method annotations and reflection on the class members.
+
+---
+
 This project provides a header-only solution for a compile-time reflection system designed for resource management.
 The result can be used to create an execution graph for your multi-threaded system,
 such as with [entt::flow](https://github.com/skypjack/entt/wiki/Crash-Course:-graph#flow-builder).
